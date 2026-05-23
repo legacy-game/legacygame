@@ -1,0 +1,55 @@
+# Unity-generated
+/Library/
+/Temp/
+/Obj/
+/Build/
+/Builds/
+/Logs/
+/UserSettings/
+/MemoryCaptures/
+/Unity/Library/
+/Unity/Temp/
+/Unity/Obj/
+/Unity/Build/
+/Unity/Builds/
+/Unity/Logs/
+/Unity/UserSettings/
+/Unity/MemoryCaptures/
+
+# Unity cache and generated project files
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.opendb
+*.VC.db
+
+# IDE
+/.vs/
+/.idea/
+/.vscode/*
+!/.vscode/settings.json
+!/.vscode/extensions.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+*.apk
+*.aab
+*.unitypackage
+
+# Crash reports
+sysinfo.txt
+
+# Asset Store
+/Assets/AssetStoreTools*
+/Unity/Assets/AssetStoreTools*
