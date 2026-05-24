@@ -4,6 +4,8 @@ The current milestone is **the first playable shared-world prototype**.
 
 This is not a café slice. The café is only the first test building inside Veyne. The real milestone is a small playable block where citizens, places, plots, ownership, jobs, money, time, and history all exist in one shared world state.
 
+Long-term, the world is not only one fixed town. The full game starts with one dense seeded capital city and surrounding older towns, then opens into large wilderness/frontier territory. Players should eventually be able to claim land, found settlements, expand infrastructure, and create new jurisdictions that can become country-like over time. The current prototype proves the shared-world spine first; frontier expansion waits until that spine is reliable.
+
 ---
 
 ## Operating Assumptions
@@ -50,10 +52,39 @@ Build the world model that every future player reads from.
 - `EconomyState`
 - `HistoryEvent`
 - `GridCoord`
+- Territory/chunk id model placeholder
 
 ### Definition of Done
 
 Veyne exists as data, not just as a Unity scene. It contains citizens, plots, buildings, owners, and history records.
+
+---
+
+## Phase 1A — Geography and Territory Foundation
+
+Keep the world model compatible with future expansion beyond the capital.
+
+### Tasks
+
+- Add `TerritoryChunkState` or equivalent large-land-chunk data
+- Add biome tags: `Urban`, `Forest`, `Grassland`, `Lakeside`, `Hill`, `Wetland`, `FarmlandPotential`
+- Add claim status: `Unclaimed`, `Private`, `Municipal`, `Settlement`, future `Jurisdiction`
+- Add optional settlement/jurisdiction ids, but do not build full government yet
+- Save/load territory chunks
+- Add inspect command/dev UI for territory
+- Write history when territory is claimed or converted
+
+### Definition of Done
+
+The world can represent:
+
+```text
+capital block = developed territory
+surrounding land = wilderness/unclaimed territory
+territory can be inspected, saved, loaded, and eventually claimed
+```
+
+This phase is a compatibility layer, not full frontier gameplay.
 
 ---
 
@@ -265,7 +296,7 @@ Do not build yet:
 - Real account/auth
 - Real database server
 - Full economy simulation
-- Frontier expansion
+- Full frontier expansion / settlement founding / countries
 
 Those systems require the shared-world foundation first.
 
@@ -287,12 +318,14 @@ Those systems require the shared-world foundation first.
 - Persistent online single-region prototype
 - More jobs
 - More properties
+- Territory claims and settlement founding prototype
 - Basic government
 - Basic family/legacy scaffolding
 
 ### Year 3+
 
 - Multi-region world
+- Player-founded towns and country-scale jurisdictions
 - Crime/justice
 - Elections
 - Player-created culture

@@ -15,5 +15,9 @@ namespace Legacy.Save
         public GridSaveData currentCoord;
         public string activity;
         public int scheduleStage;
+        public string routineId;
+        public string activeRoutineStepId;
+        public string currentIntent;
+        public long lastRoutineAbsoluteMinute;
     }
 }

@@ -42,6 +42,10 @@ namespace Legacy.Save
                 });
             }
 
+            foreach (TerritoryChunkState territory in state.TerritoryChunksById.Values) {
+                data.territoryChunks.Add(ToSaveData(territory));
+            }
+
             foreach (CitizenState citizen in state.CitizensById.Values) {
                 data.citizens.Add(new CitizenSaveData {
                     id = citizen.Id.Value,
@@ -53,8 +57,24 @@ namespace Legacy.Save
                     currentPlaceId = citizen.CurrentPlaceId.Value,
                     currentCoord = ToSaveData(citizen.CurrentCoord),
                     activity = citizen.Activity.ToString(),
-                    scheduleStage = citizen.ScheduleStage
+                    scheduleStage = citizen.ScheduleStage,
+                    routineId = citizen.Routine.RoutineId,
+                    activeRoutineStepId = citizen.Routine.ActiveStepId,
+                    currentIntent = citizen.Routine.CurrentIntent,
+                    lastRoutineAbsoluteMinute = citizen.Routine.LastProcessedAbsoluteMinute
                 });
+            }
+
+            foreach (CitizenRegistrationState registration in state.CitizenRegistrations) {
+                data.citizenRegistrations.Add(ToSaveData(registration));
+            }
+
+            foreach (CitizenGoalState goal in state.CitizenGoals) {
+                data.citizenGoals.Add(ToSaveData(goal));
+            }
+
+            foreach (RoleAssignmentState assignment in state.RoleAssignments) {
+                data.roleAssignments.Add(ToSaveData(assignment));
             }
 
             foreach (PlotState plot in state.PlotsById.Values) {
@@ -126,6 +146,12 @@ namespace Legacy.Save
                     Enum.Parse<PlaceKind>(place.kind)));
             }
 
+            if (data.territoryChunks != null) {
+                foreach (TerritoryChunkSaveData territory in data.territoryChunks) {
+                    state.AddTerritoryChunk(ToRuntime(territory));
+                }
+            }
+
             foreach (CitizenSaveData citizen in data.citizens) {
                 state.AddCitizen(new CitizenState(
                     Id(citizen.id),
@@ -137,7 +163,32 @@ namespace Legacy.Save
                     Id(citizen.currentPlaceId),
                     ToRuntime(citizen.currentCoord),
                     Enum.Parse<CitizenActivityState>(citizen.activity),
-                    citizen.scheduleStage));
+                    citizen.scheduleStage,
+                    new CitizenRoutineState(
+                        citizen.routineId ?? string.Empty,
+                        citizen.activeRoutineStepId ?? string.Empty,
+                        citizen.currentIntent ?? string.Empty,
+                        citizen.lastRoutineAbsoluteMinute == 0 && string.IsNullOrEmpty(citizen.activeRoutineStepId)
+                            ? -1
+                            : citizen.lastRoutineAbsoluteMinute)));
+            }
+
+            if (data.citizenRegistrations != null) {
+                foreach (CitizenRegistrationSaveData registration in data.citizenRegistrations) {
+                    state.AddCitizenRegistration(ToRuntime(registration));
+                }
+            }
+
+            if (data.citizenGoals != null) {
+                foreach (CitizenGoalSaveData goal in data.citizenGoals) {
+                    state.AddCitizenGoal(ToRuntime(goal));
+                }
+            }
+
+            if (data.roleAssignments != null) {
+                foreach (RoleAssignmentSaveData assignment in data.roleAssignments) {
+                    state.AddRoleAssignment(ToRuntime(assignment));
+                }
             }
 
             foreach (PlotSaveData plot in data.plots) {
@@ -241,6 +292,114 @@ namespace Legacy.Save
             return historyData;
         }
 
+        private static CitizenGoalSaveData ToSaveData(CitizenGoalState goal)
+        {
+            return new CitizenGoalSaveData {
+                id = goal.Id.Value,
+                citizenId = goal.CitizenId.Value,
+                kind = goal.Kind.ToString(),
+                targetPlaceId = goal.TargetPlaceId.Value,
+                targetCoord = ToSaveData(goal.TargetCoord),
+                activity = goal.Activity.ToString(),
+                urgency = goal.Urgency,
+                reason = goal.Reason,
+                createdAt = ToSaveData(goal.CreatedAt),
+                expiresAt = ToSaveData(goal.ExpiresAt),
+                status = goal.Status.ToString()
+            };
+        }
+
+        private static CitizenRegistrationSaveData ToSaveData(CitizenRegistrationState registration)
+        {
+            return new CitizenRegistrationSaveData {
+                citizenId = registration.CitizenId.Value,
+                registeredAt = ToSaveData(registration.RegisteredAt),
+                startingResidencePlaceId = registration.StartingResidencePlaceId.Value
+            };
+        }
+
+        private static CitizenRegistrationState ToRuntime(CitizenRegistrationSaveData registration)
+        {
+            return new CitizenRegistrationState(
+                Id(registration.citizenId),
+                ToRuntime(registration.registeredAt),
+                Id(registration.startingResidencePlaceId));
+        }
+
+        private static TerritoryChunkSaveData ToSaveData(TerritoryChunkState territory)
+        {
+            return new TerritoryChunkSaveData {
+                id = territory.Id.Value,
+                regionId = territory.RegionId.Value,
+                chunkX = territory.Coord.X,
+                chunkY = territory.Coord.Y,
+                displayName = territory.DisplayName,
+                biome = territory.Biome.ToString(),
+                claimStatus = territory.ClaimStatus.ToString(),
+                claimOwnerId = territory.ClaimOwnerId.Value,
+                settlementId = territory.SettlementId.Value,
+                jurisdictionId = territory.JurisdictionId.Value,
+                isBuildable = territory.IsBuildable,
+                isDiscovered = territory.IsDiscovered
+            };
+        }
+
+        private static RoleAssignmentSaveData ToSaveData(RoleAssignmentState assignment)
+        {
+            return new RoleAssignmentSaveData {
+                id = assignment.Id.Value,
+                citizenId = assignment.CitizenId.Value,
+                roleId = assignment.RoleId,
+                workplacePlaceId = assignment.WorkplacePlaceId.Value,
+                isActive = assignment.IsActive
+            };
+        }
+
+        private static RoleAssignmentState ToRuntime(RoleAssignmentSaveData assignment)
+        {
+            return new RoleAssignmentState(
+                Id(assignment.id),
+                Id(assignment.citizenId),
+                assignment.roleId,
+                Id(assignment.workplacePlaceId),
+                assignment.isActive);
+        }
+
+        private static TerritoryChunkState ToRuntime(TerritoryChunkSaveData territory)
+        {
+            return new TerritoryChunkState(
+                Id(territory.id),
+                Id(territory.regionId),
+                new GridChunkCoord(territory.chunkX, territory.chunkY),
+                territory.displayName,
+                Enum.Parse<TerritoryBiome>(territory.biome),
+                Enum.Parse<TerritoryClaimStatus>(territory.claimStatus),
+                OptionalId(territory.claimOwnerId),
+                OptionalId(territory.settlementId),
+                OptionalId(territory.jurisdictionId),
+                territory.isBuildable,
+                territory.isDiscovered);
+        }
+
+        private static CitizenGoalState ToRuntime(CitizenGoalSaveData goal)
+        {
+            var definition = new CitizenGoalDefinition(
+                Enum.Parse<CitizenGoalKind>(goal.kind),
+                Id(goal.targetPlaceId),
+                ToRuntime(goal.targetCoord),
+                Enum.Parse<CitizenActivityState>(goal.activity),
+                goal.urgency,
+                goal.reason);
+
+            return new CitizenGoalState(
+                Id(goal.id),
+                Id(goal.citizenId),
+                definition,
+                ToRuntime(goal.createdAt),
+                ToRuntime(goal.expiresAt),
+                Enum.Parse<CitizenGoalStatus>(goal.status));
+        }
+
         private static HistoryEvent ToRuntime(HistoryEventSaveData history)
         {
             var actorIds = new WorldEntityId[history.actorIds.Count];
@@ -260,6 +419,13 @@ namespace Legacy.Save
                 history.description,
                 actorIds,
                 placeIds);
+        }
+
+        private static WorldEntityId OptionalId(string value)
+        {
+            return string.IsNullOrEmpty(value)
+                ? default
+                : Id(value);
         }
     }
 }

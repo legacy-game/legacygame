@@ -31,6 +31,7 @@ namespace Legacy.History
             while (_recentHistory.Count > MaxRecentHistoryEvents) {
                 HistoryEvent archivedEvent = _recentHistory[0];
                 _recentHistory.RemoveAt(0);
+                RemoveHistoryEventFromIndexes(archivedEvent);
                 _archive.Add(archivedEvent);
             }
         }
@@ -113,6 +114,28 @@ namespace Legacy.History
             eventsAtMinute.Add(historyEvent);
         }
 
+        private void RemoveHistoryEventFromIndexes(HistoryEvent historyEvent)
+        {
+            RemoveFromHistoryIndex(_historyByKind, historyEvent.Kind, historyEvent);
+
+            for (int i = 0; i < historyEvent.ActorIds.Count; i++) {
+                RemoveFromHistoryIndex(_historyByActorId, historyEvent.ActorIds[i], historyEvent);
+            }
+
+            for (int i = 0; i < historyEvent.PlaceIds.Count; i++) {
+                RemoveFromHistoryIndex(_historyByPlaceId, historyEvent.PlaceIds[i], historyEvent);
+            }
+
+            long minute = ToAbsoluteMinute(historyEvent.Timestamp);
+            if (_historyByAbsoluteMinute.TryGetValue(minute, out List<HistoryEvent> eventsAtMinute)) {
+                eventsAtMinute.Remove(historyEvent);
+
+                if (eventsAtMinute.Count == 0) {
+                    _historyByAbsoluteMinute.Remove(minute);
+                }
+            }
+        }
+
         private static void AddToHistoryIndex<TKey>(Dictionary<TKey, List<HistoryEvent>> index, TKey key, HistoryEvent historyEvent)
         {
             if (!index.TryGetValue(key, out List<HistoryEvent> events)) {
@@ -121,6 +144,19 @@ namespace Legacy.History
             }
 
             events.Add(historyEvent);
+        }
+
+        private static void RemoveFromHistoryIndex<TKey>(Dictionary<TKey, List<HistoryEvent>> index, TKey key, HistoryEvent historyEvent)
+        {
+            if (!index.TryGetValue(key, out List<HistoryEvent> events)) {
+                return;
+            }
+
+            events.Remove(historyEvent);
+
+            if (events.Count == 0) {
+                index.Remove(key);
+            }
         }
 
         private static long ToAbsoluteMinute(GameDateTime dateTime)

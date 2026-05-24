@@ -24,7 +24,10 @@ Vocabulary used across the GDD. When in doubt, here.
 | **Expansive system** | A system designed to describe *what becomes possible*. Opposite of restrictive. |
 | **Restrictive system** | A system designed to describe *what is permitted*. To be avoided in our design. |
 | **Cozy moment, civic meta** | The two-layer structure: peaceful day-to-day with a civic/political/dramatic layer on top |
-| **Frontier** | New regions periodically opened for new-player settlement. Primary onboarding strategy. Long-term system. |
+| **Frontier** | Undeveloped wilderness/rural territory outside the seeded capital and older towns. Players can eventually claim, build, settle, and govern it. |
+| **Territory chunk** | A large land unit above plots/parcels, used to track biome, claim status, buildability, settlement, and jurisdiction. |
+| **Settlement** | A named inhabited place that can grow from claimed territory into a village, town, city, or capital. |
+| **Jurisdiction** | A governed area with public records, rules, borders, and authority. Country-scale jurisdictions emerge late from civic systems. |
 | **History log** | Append-only world record of named events. The "world that remembers" backbone. |
 | **Generated personality** | NPC traits (warmth, talkativeness, generosity, mood) rolled at spawn from archetype ranges. Not LLM-driven. |
 | **Seeded canon** | Commissioned cultural content (music, books, films) shipped with the game as the world's pre-existing "classical era." |
@@ -36,7 +39,8 @@ Vocabulary used across the GDD. When in doubt, here.
 
 | Term | Definition |
 |---|---|
-| **Marenne** [PLACEHOLDER] | The fictional country the game is set in |
+| **Marenne** [PLACEHOLDER] | The seeded starting country; not the permanent limit of future player-founded civilizations |
+| **Hesperin** [PLACEHOLDER] | The seeded capital city and long-term dense civilization anchor |
 | **Aldwich Province** [PLACEHOLDER] | The province where Veyne sits |
 | **Veyne** [PLACEHOLDER] | The first playable town/region and the testbed for shared-world systems |
 | **Linden Café** | Player's café at 14 Linden Street |

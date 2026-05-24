@@ -51,9 +51,10 @@ See [04b-world-bible.md](04b-world-bible.md) for full setting detail.
 ## World architecture (long-term vision)
 
 - **One persistent online world** (eventual goal; single-player first)
+- **Seeded capital + open frontier:** the world begins with one dense authored capital city and large surrounding wilderness. The capital proves ordinary civic life; the frontier lets players expand civilization outward.
 - **Regionally simulated:** only nearby regions are actively rendered and simulated for each player
 - **Region transitions:** handled via localized server nodes; world feels connected but is sharded behind the scenes
-- **Frontier expansion:** new regions periodically open for new-player settlement and growth — the primary onboarding answer
+- **Frontier expansion:** undeveloped forest, grassland, lakes, and rural territory can become player-founded settlements over time. "Country" scale emerges later from settlements, claims, jurisdictions, borders, history, and player recognition — not from a hardcoded country-creator button.
 - **World clock + persistent history log:** the "world that remembers" backbone
 
 ---

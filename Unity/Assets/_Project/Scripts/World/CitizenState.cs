@@ -15,6 +15,7 @@ namespace Legacy.World
         public GridCoord CurrentCoord { get; private set; }
         public CitizenActivityState Activity { get; private set; }
         public int ScheduleStage { get; private set; }
+        public CitizenRoutineState Routine { get; }
 
         public CitizenState(
             WorldEntityId id,
@@ -26,7 +27,8 @@ namespace Legacy.World
             WorldEntityId currentPlaceId,
             GridCoord currentCoord,
             CitizenActivityState activity = CitizenActivityState.Offscreen,
-            int scheduleStage = 0)
+            int scheduleStage = 0,
+            CitizenRoutineState routine = null)
         {
             if (string.IsNullOrWhiteSpace(displayName)) {
                 throw new ArgumentException("Display name must not be empty.", nameof(displayName));
@@ -42,6 +44,7 @@ namespace Legacy.World
             CurrentCoord = currentCoord;
             Activity = activity;
             ScheduleStage = scheduleStage;
+            Routine = routine ?? new CitizenRoutineState();
         }
 
         public void MoveTo(WorldEntityId regionId, WorldEntityId sceneId, WorldEntityId placeId, GridCoord coord, CitizenActivityState activity)
@@ -56,6 +59,17 @@ namespace Legacy.World
         public void SetScheduleStage(int scheduleStage)
         {
             ScheduleStage = scheduleStage;
+        }
+
+        public void SetRoutineProgress(string stepId, string intent, long lastProcessedAbsoluteMinute, int scheduleStage)
+        {
+            Routine.SetProgress(stepId, intent, lastProcessedAbsoluteMinute);
+            ScheduleStage = scheduleStage;
+        }
+
+        public void SetCurrentIntent(string intent, long lastProcessedAbsoluteMinute)
+        {
+            Routine.SetIntent(intent, lastProcessedAbsoluteMinute);
         }
     }
 }

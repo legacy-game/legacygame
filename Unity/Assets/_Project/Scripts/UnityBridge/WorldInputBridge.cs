@@ -15,7 +15,12 @@ namespace Legacy.UnityBridge
     {
         [SerializeField] private string _playerCitizenId = "citizen_noaharan";
         [SerializeField] private string _buildingId = "building_linden_cafe";
+        [SerializeField] private string _plotId = "plot_linden_14";
+        [SerializeField] private string _placeId = "place_linden_cafe_interior";
         [SerializeField] private string _transferOwnerCitizenId = "citizen_rowan";
+        [SerializeField] private string _goalCitizenId = "citizen_old_mr_pell";
+        [SerializeField] private string _goalTargetPlaceId = "place_pell_pharmacy_interior";
+        [SerializeField] private string _debugTerritoryId = "territory_aldwich_south_grassland";
         [SerializeField] private string _debugSaveSlot = "world-memory-smoke";
         [SerializeField] private PropertyInfoPanel _infoPanel;
 
@@ -39,21 +44,72 @@ namespace Legacy.UnityBridge
                 return;
             }
 
+            if (keyboard.f1Key.wasPressedThisFrame) {
+                WorldDebugPanel.Toggle();
+            }
+
+            if (!WorldDebugPanel.IsVisible) {
+                return;
+            }
+
             if (keyboard.iKey.wasPressedThisFrame) {
-                LastResult = WorldBootstrap.Runtime.Execute(new InspectBuildingCommand(
+                ExecuteAndShow(new InspectBuildingCommand(
                     new WorldEntityId(_buildingId),
+                    new WorldEntityId(_playerCitizenId)));
+            }
+
+            if (keyboard.pKey.wasPressedThisFrame) {
+                ExecuteAndShow(new InspectPlotCommand(
+                    new WorldEntityId(_plotId),
+                    new WorldEntityId(_playerCitizenId)));
+            }
+
+            if (keyboard.vKey.wasPressedThisFrame) {
+                ExecuteAndShow(new InspectPlaceCommand(
+                    new WorldEntityId(_placeId),
                     new WorldEntityId(_playerCitizenId)));
             }
 
             if (keyboard.tKey.wasPressedThisFrame) {
-                LastResult = WorldBootstrap.Runtime.Execute(new AdvanceTimeCommand(10));
+                ExecuteAndShow(new AdvanceTimeCommand(10));
             }
 
             if (keyboard.oKey.wasPressedThisFrame) {
-                LastResult = WorldBootstrap.Runtime.Execute(new TransferBuildingOwnershipCommand(
+                ExecuteAndShow(new TransferBuildingOwnershipCommand(
                     new WorldEntityId(_buildingId),
                     new WorldEntityId(_transferOwnerCitizenId),
                     new WorldEntityId(_playerCitizenId)));
+            }
+
+            if (keyboard.gKey.wasPressedThisFrame) {
+                AddPellGoal();
+            }
+
+            if (keyboard.yKey.wasPressedThisFrame) {
+                ExecuteAndShow(new InspectTerritoryCommand(
+                    new WorldEntityId(_debugTerritoryId),
+                    new WorldEntityId(_playerCitizenId)));
+            }
+
+            if (keyboard.uKey.wasPressedThisFrame) {
+                ExecuteAndShow(new ClaimTerritoryCommand(
+                    new WorldEntityId(_debugTerritoryId),
+                    new WorldEntityId(_playerCitizenId),
+                    new WorldEntityId(_playerCitizenId)));
+            }
+
+            if (keyboard.bKey.wasPressedThisFrame) {
+                ExecuteAndShow(new DoWorldActionCommand(
+                    new WorldEntityId("citizen_rowan"),
+                    WorldActionKind.ServeCustomer,
+                    new WorldEntityId("place_linden_cafe_interior")));
+            }
+
+            if (keyboard.nKey.wasPressedThisFrame) {
+                ExecuteAndShow(new DoWorldActionCommand(
+                    new WorldEntityId(_playerCitizenId),
+                    WorldActionKind.PatrolDistrict,
+                    new WorldEntityId("place_linden_cafe_interior")));
             }
 
             if (keyboard.sKey.wasPressedThisFrame) {
@@ -71,6 +127,42 @@ namespace Legacy.UnityBridge
             if (keyboard.digit2Key.wasPressedThisFrame) {
                 SwitchScene(WorldSceneIds.CafeInteriorSceneId, WorldSceneIds.CafeInteriorUnitySceneName);
             }
+
+            if (keyboard.digit3Key.wasPressedThisFrame) {
+                SwitchScene(WorldSceneIds.PharmacyInteriorSceneId, WorldSceneIds.PharmacyInteriorUnitySceneName);
+            }
+        }
+
+        private void ExecuteAndShow(IWorldCommand command)
+        {
+            LastResult = WorldBootstrap.Runtime.Execute(command);
+            ShowInfo(LastResult.Message);
+        }
+
+        private void AddPellGoal()
+        {
+            WorldState state = WorldBootstrap.Runtime.State;
+            var targetPlaceId = new WorldEntityId(_goalTargetPlaceId);
+            GridCoord targetCoord = new GridCoord(2, 2);
+            if (state.TryGetBuilding(new WorldEntityId("building_pell_pharmacy"), out BuildingState pharmacy)) {
+                targetCoord = pharmacy.EntranceCoord;
+            }
+
+            var goal = new CitizenGoalDefinition(
+                CitizenGoalKind.TravelToPlace,
+                targetPlaceId,
+                targetCoord,
+                CitizenActivityState.Visiting,
+                100,
+                "Go to Pell Pharmacy");
+            var goalId = new WorldEntityId($"goal_pell_pharmacy_{state.CitizenGoals.Count + 1:000}");
+
+            ExecuteAndShow(new AddCitizenGoalCommand(
+                goalId,
+                new WorldEntityId(_goalCitizenId),
+                goal,
+                state.CurrentTime.AddMinutes(180),
+                new WorldEntityId(_playerCitizenId)));
         }
 
         private async void SaveWorldAsync()
@@ -136,15 +228,18 @@ namespace Legacy.UnityBridge
                 return;
             }
 
+            if (sceneId.Value == WorldSceneIds.PharmacyInteriorSceneId) {
+                LoadUnityScene(WorldSceneIds.PharmacyInteriorUnitySceneName);
+                return;
+            }
+
             LoadUnityScene(WorldSceneIds.ExteriorUnitySceneName);
         }
 
         private void LoadUnityScene(string unitySceneName)
         {
 #if UNITY_EDITOR
-            string path = unitySceneName == WorldSceneIds.CafeInteriorUnitySceneName
-                ? WorldSceneIds.CafeInteriorUnityScenePath
-                : WorldSceneIds.ExteriorUnityScenePath;
+            string path = GetUnityScenePath(unitySceneName);
 
             if (Application.isPlaying) {
                 EditorSceneManager.LoadSceneInPlayMode(path, new LoadSceneParameters(LoadSceneMode.Single));
@@ -154,6 +249,19 @@ namespace Legacy.UnityBridge
 #else
             SceneManager.LoadScene(unitySceneName);
 #endif
+        }
+
+        private static string GetUnityScenePath(string unitySceneName)
+        {
+            if (unitySceneName == WorldSceneIds.CafeInteriorUnitySceneName) {
+                return WorldSceneIds.CafeInteriorUnityScenePath;
+            }
+
+            if (unitySceneName == WorldSceneIds.PharmacyInteriorUnitySceneName) {
+                return WorldSceneIds.PharmacyInteriorUnityScenePath;
+            }
+
+            return WorldSceneIds.ExteriorUnityScenePath;
         }
     }
 }

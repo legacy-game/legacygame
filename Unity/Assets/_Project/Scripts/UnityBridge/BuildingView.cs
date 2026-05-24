@@ -1,5 +1,6 @@
 using Legacy.World;
 using UnityEngine;
+using Legacy.Commands;
 
 namespace Legacy.UnityBridge
 {
@@ -8,9 +9,16 @@ namespace Legacy.UnityBridge
     {
         [SerializeField] private string _buildingId = "building_linden_cafe";
         [SerializeField] private TextMesh _label;
+        [SerializeField] private PropertyInfoPanel _infoPanel;
+        [SerializeField] private string _playerCitizenId = "citizen_noaharan";
 
         public WorldEntityId BuildingId => new WorldEntityId(_buildingId);
         public string CurrentDisplayText { get; private set; }
+
+        public void SetInfoPanel(PropertyInfoPanel infoPanel)
+        {
+            _infoPanel = infoPanel;
+        }
 
         private void Awake()
         {
@@ -81,7 +89,31 @@ namespace Legacy.UnityBridge
                 ? citizen.DisplayName
                 : building.OwnerCitizenId.ToString();
 
-            return $"{building.DisplayName}\nOwned by {owner}";
+            return $"{building.DisplayName}\nOwner: {owner}";
+        }
+
+        public string GetPrompt()
+        {
+            if (WorldBootstrap.Runtime == null || !WorldBootstrap.Runtime.State.TryGetBuilding(BuildingId, out BuildingState building)) {
+                return "E: inspect building";
+            }
+
+            return $"E: inspect {building.DisplayName}";
+        }
+
+        public void Interact()
+        {
+            if (WorldBootstrap.Runtime == null) {
+                return;
+            }
+
+            WorldCommandResult result = WorldBootstrap.Runtime.Execute(new InspectBuildingCommand(
+                BuildingId,
+                new WorldEntityId(_playerCitizenId)));
+
+            if (_infoPanel != null) {
+                _infoPanel.Show(result.Message);
+            }
         }
 
         private void OnWorldCommandExecuted(Commands.WorldCommandResult result)

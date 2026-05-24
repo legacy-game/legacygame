@@ -10,6 +10,7 @@ namespace Legacy.World
         private readonly Dictionary<WorldEntityId, CitizenState> _citizensById = new();
         private readonly Dictionary<WorldEntityId, PlotState> _plotsById = new();
         private readonly Dictionary<WorldEntityId, BuildingState> _buildingsById = new();
+        private readonly Dictionary<WorldEntityId, TerritoryChunkState> _territoryChunksById = new();
 
         public IReadOnlyDictionary<WorldEntityId, RegionState> RegionsById => _regionsById;
         public IReadOnlyDictionary<WorldEntityId, WorldSceneState> ScenesById => _scenesById;
@@ -17,6 +18,7 @@ namespace Legacy.World
         public IReadOnlyDictionary<WorldEntityId, CitizenState> CitizensById => _citizensById;
         public IReadOnlyDictionary<WorldEntityId, PlotState> PlotsById => _plotsById;
         public IReadOnlyDictionary<WorldEntityId, BuildingState> BuildingsById => _buildingsById;
+        public IReadOnlyDictionary<WorldEntityId, TerritoryChunkState> TerritoryChunksById => _territoryChunksById;
 
         public void AddRegion(RegionState region)
         {
@@ -68,6 +70,11 @@ namespace Legacy.World
             }
         }
 
+        public void AddTerritoryChunk(TerritoryChunkState territoryChunk)
+        {
+            _territoryChunksById.Add(territoryChunk.Id, territoryChunk);
+        }
+
         public bool TryGetCitizen(WorldEntityId id, out CitizenState citizen)
         {
             return _citizensById.TryGetValue(id, out citizen);
@@ -91,6 +98,11 @@ namespace Legacy.World
         public bool TryGetPlot(WorldEntityId id, out PlotState plot)
         {
             return _plotsById.TryGetValue(id, out plot);
+        }
+
+        public bool TryGetTerritoryChunk(WorldEntityId id, out TerritoryChunkState territoryChunk)
+        {
+            return _territoryChunksById.TryGetValue(id, out territoryChunk);
         }
     }
 }

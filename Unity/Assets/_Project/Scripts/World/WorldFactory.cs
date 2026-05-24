@@ -37,13 +37,20 @@ namespace Legacy.World
             state.AddPlace(new PlaceState(streetPlaceId, veyneId, exteriorSceneId, "Linden Street", PlaceKind.PublicSpace));
             state.AddPlace(new PlaceState(cafeInteriorPlaceId, veyneId, cafeInteriorSceneId, "Linden Cafe Interior", PlaceKind.Business));
             state.AddPlace(new PlaceState(pharmacyInteriorPlaceId, veyneId, pharmacyInteriorSceneId, "Pell Pharmacy Interior", PlaceKind.Business));
-            state.AddCitizen(new CitizenState(noahId, "Noaharan", cafeId, cafeId, veyneId, exteriorSceneId, streetPlaceId, new GridCoord(12, 8), CitizenActivityState.Working));
-            state.AddCitizen(new CitizenState(rowanId, "Rowan", cafeId, cafeId, veyneId, cafeInteriorSceneId, cafeInteriorPlaceId, new GridCoord(4, 3), CitizenActivityState.Working));
-            state.AddCitizen(new CitizenState(pellId, "Old Mr. Pell", pharmacyId, pharmacyId, veyneId, exteriorSceneId, streetPlaceId, new GridCoord(18, 8), CitizenActivityState.Offscreen));
+            state.AddTerritoryChunk(new TerritoryChunkState(new WorldEntityId("territory_veyne_linden_row"), veyneId, new GridChunkCoord(0, 0), "Linden Row", TerritoryBiome.Urban, TerritoryClaimStatus.Municipal, veyneId, default, veyneId, true, true));
+            state.AddTerritoryChunk(new TerritoryChunkState(new WorldEntityId("territory_aldwich_west_forest"), veyneId, new GridChunkCoord(-1, 0), "West Aldwich Forest", TerritoryBiome.Forest, TerritoryClaimStatus.Unclaimed, default, default, default, false, true));
+            state.AddTerritoryChunk(new TerritoryChunkState(new WorldEntityId("territory_aldwich_south_grassland"), veyneId, new GridChunkCoord(0, -1), "South Aldwich Grassland", TerritoryBiome.Grassland, TerritoryClaimStatus.Unclaimed, default, default, default, true, true));
+            state.AddTerritoryChunk(new TerritoryChunkState(new WorldEntityId("territory_aldwich_lakeside"), veyneId, new GridChunkCoord(1, 0), "Aldwich Lakeside", TerritoryBiome.Lakeside, TerritoryClaimStatus.Unclaimed, default, default, default, true, false));
+            state.AddCitizen(new CitizenState(noahId, "Noaharan", cafeId, cafeId, veyneId, exteriorSceneId, streetPlaceId, new GridCoord(12, 8), CitizenActivityState.Present));
+            state.AddCitizen(new CitizenState(rowanId, "Rowan", cafeId, cafeId, veyneId, cafeInteriorSceneId, cafeInteriorPlaceId, new GridCoord(4, 3), CitizenActivityState.Working, 0, new CitizenRoutineState(RoutineCatalog.RowanCafeShiftRoutineId)));
+            state.AddCitizen(new CitizenState(pellId, "Old Mr. Pell", pharmacyId, pharmacyId, veyneId, exteriorSceneId, streetPlaceId, new GridCoord(18, 8), CitizenActivityState.Offscreen, 0, new CitizenRoutineState(RoutineCatalog.PellMorningRoutineId)));
             state.AddPlot(new PlotState(lindenPlotId, veyneId, "14 Linden Street", new GridBounds(new GridCoord(10, 6), 8, 6), noahId, AccessRule.Public));
             state.AddPlot(new PlotState(pharmacyPlotId, veyneId, "16 Linden Street", new GridBounds(new GridCoord(18, 6), 8, 6), pellId, AccessRule.Public));
             state.AddBuilding(new BuildingState(cafeId, veyneId, lindenPlotId, exteriorSceneId, cafeInteriorSceneId, cafeInteriorPlaceId, "Linden Cafe", noahId, PlaceKind.Business, new GridCoord(12, 7)));
             state.AddBuilding(new BuildingState(pharmacyId, veyneId, pharmacyPlotId, exteriorSceneId, pharmacyInteriorSceneId, pharmacyInteriorPlaceId, "Pell Pharmacy", pellId, PlaceKind.Business, new GridCoord(18, 7)));
+            state.AddRoleAssignment(new RoleAssignmentState(new WorldEntityId("roleassign_noah_cafe_owner"), noahId, RoleCatalog.CafeOwner, cafeInteriorPlaceId));
+            state.AddRoleAssignment(new RoleAssignmentState(new WorldEntityId("roleassign_rowan_cafe_worker"), rowanId, RoleCatalog.CafeWorker, cafeInteriorPlaceId));
+            state.AddRoleAssignment(new RoleAssignmentState(new WorldEntityId("roleassign_pell_shopkeeper"), pellId, RoleCatalog.Shopkeeper, pharmacyInteriorPlaceId));
 
             var history = new HistoryLog();
             state.AddHistoryEvent(history.Create(

@@ -90,6 +90,7 @@ This is a multi-file document. Start with the executive summary, then read the p
 - [11-systems/currency.md](11-systems/currency.md)
 - [11-systems/cafe-work-loop.md](11-systems/cafe-work-loop.md)
 - [11-systems/building-kit.md](11-systems/building-kit.md)
+- [11-systems/territory-and-frontier.md](11-systems/territory-and-frontier.md)
 - [11-systems/ui-architecture.md](11-systems/ui-architecture.md)
 - [11-systems/audio-architecture.md](11-systems/audio-architecture.md)
 

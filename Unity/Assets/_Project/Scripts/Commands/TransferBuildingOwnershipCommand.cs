@@ -38,11 +38,12 @@ namespace Legacy.Commands
                 HistoryEventKind.BuildingOwnershipTransferred,
                 $"{building.DisplayName} ownership transferred from {previousOwnerId} to {newOwner.DisplayName}.",
                 new[] { _actorId, _newOwnerId },
-                new[] { building.Id });
+                new[] { building.Id, building.PlotId });
 
             return WorldCommandResult
                 .Success($"{building.DisplayName} is now owned by {newOwner.DisplayName}.")
                 .WithChangedEntity(building.Id)
+                .WithChangedEntity(building.PlotId)
                 .WithHistoryEvent(historyEvent);
         }
     }

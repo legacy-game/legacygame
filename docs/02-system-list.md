@@ -48,8 +48,10 @@ Reference catalog of every named system the full game contains. Each system is d
 | W4 | Modular Building Kit | SPINE | Snap-together walls/floors/roofs/doors/windows for procedural building assembly |
 | W5 | Day/Night & Weather | SPINE | Lighting and weather simulation per region — day only in MVP |
 | W6 | Calendar / Seasons | V1.0 | Year structure, holidays, seasonal effects |
-| W7 | Frontier Expansion | V1.0 | Periodic opening of new regions for new-player settlement and growth |
-| W8 | Public Infrastructure (abstracted) | V1.0 | Roads, power, water, sewer existence and damage states |
+| W7 | Territory & Biomes | V1.0 | Large land chunks outside dense towns: forest, grassland, lakes, rural roads, buildability, and unclaimed status |
+| W8 | Settlement Founding | V1.0 | Player-created villages/towns that grow from claimed territory into named places with residents and services |
+| W9 | Frontier Expansion | V1.0 | Player-driven expansion from capital outward into wilderness territory; later supports new settlements and country-scale jurisdictions |
+| W10 | Public Infrastructure (abstracted) | V1.0 | Roads, power, water, sewer existence and damage states |
 
 ## 4. Property & Economy
 
@@ -87,6 +89,7 @@ Reference catalog of every named system the full game contains. Each system is d
 | S4 | Petitions & Referenda | V1.0 | Citizen-initiated processes for legal change |
 | S5 | Civic Records / Public Registry | V1.0 | Public-facing records of laws, owners, officials, court rulings |
 | S6 | Revolution (tiered) | V1.0 | Civic upheaval; armed uprising unlocks when civic path is suppressed |
+| S7 | Jurisdictions & Borders | V1.0 | Local, regional, and player-founded governing areas; countries emerge from recognized jurisdictions over time |
 
 ## 7. Crime & Justice
 

@@ -16,24 +16,23 @@ namespace Legacy.Commands
 
         public WorldCommandResult Execute(WorldCommandContext context)
         {
-            if (!context.State.TryGetBuilding(_buildingId, out BuildingState building)) {
+            var propertySystem = new PropertySystem(context.State);
+            if (!propertySystem.TryGetBuildingSummary(_buildingId, out BuildingPropertySummary summary)) {
                 return WorldCommandResult.Failure($"Building not found: {_buildingId}");
             }
 
-            string ownerName = context.State.TryGetCitizen(building.OwnerCitizenId, out CitizenState owner)
-                ? owner.DisplayName
-                : building.OwnerCitizenId.ToString();
+            PropertyAccessResult access = propertySystem.CheckBuildingAccess(_buildingId, _inspectorId);
 
             HistoryEvent historyEvent = context.History.Create(
                 context.State.CurrentTime,
                 HistoryEventKind.BuildingInspected,
-                $"{building.DisplayName} was inspected.",
+                $"{summary.DisplayName} was inspected.",
                 new[] { _inspectorId },
-                new[] { building.Id });
+                new[] { summary.BuildingId, summary.PlotId, summary.InteriorPlaceId });
 
             return WorldCommandResult
-                .Success($"{building.DisplayName}\nOwned by {ownerName}")
-                .WithChangedEntity(building.Id)
+                .Success($"{summary.DisplayName}\nOwned by {summary.OwnerName}\nPlot: {summary.PlotName}\nPlace: {summary.InteriorPlaceName}\nAccess: {summary.AccessRule} ({access.Reason})")
+                .WithChangedEntity(summary.BuildingId)
                 .WithHistoryEvent(historyEvent);
         }
     }

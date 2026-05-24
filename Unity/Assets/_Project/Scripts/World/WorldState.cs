@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using Legacy.History;
 using Legacy.Time;
 
@@ -11,6 +11,9 @@ namespace Legacy.World
         private readonly WorldEntityStore _entities = new();
         private readonly SceneEntityIndex _sceneIndex = new();
         private readonly WorldSpatialIndex _spatialIndex = new();
+        private readonly List<CitizenGoalState> _citizenGoals = new();
+        private readonly List<RoleAssignmentState> _roleAssignments = new();
+        private readonly List<CitizenRegistrationState> _citizenRegistrations = new();
         private readonly HistoryStore _history;
 
         public int SchemaVersion { get; }
@@ -24,6 +27,10 @@ namespace Legacy.World
         public IReadOnlyDictionary<WorldEntityId, CitizenState> CitizensById => _entities.CitizensById;
         public IReadOnlyDictionary<WorldEntityId, PlotState> PlotsById => _entities.PlotsById;
         public IReadOnlyDictionary<WorldEntityId, BuildingState> BuildingsById => _entities.BuildingsById;
+        public IReadOnlyDictionary<WorldEntityId, TerritoryChunkState> TerritoryChunksById => _entities.TerritoryChunksById;
+        public IReadOnlyList<CitizenGoalState> CitizenGoals => _citizenGoals;
+        public IReadOnlyList<RoleAssignmentState> RoleAssignments => _roleAssignments;
+        public IReadOnlyList<CitizenRegistrationState> CitizenRegistrations => _citizenRegistrations;
         public IReadOnlyList<HistoryEvent> RecentHistory => _history.RecentHistory;
         public IHistoryArchive HistoryArchive => _history.Archive;
 
@@ -78,6 +85,61 @@ namespace Legacy.World
             _entities.AddBuilding(building);
             _sceneIndex.AddBuilding(building);
             _spatialIndex.AddBuilding(building);
+        }
+
+        public void AddTerritoryChunk(TerritoryChunkState territoryChunk)
+        {
+            _entities.AddTerritoryChunk(territoryChunk);
+        }
+
+        public void AddCitizenGoal(CitizenGoalState goal)
+        {
+            _citizenGoals.Add(goal);
+        }
+
+        public void AddRoleAssignment(RoleAssignmentState assignment)
+        {
+            _roleAssignments.Add(assignment);
+        }
+
+        public void AddCitizenRegistration(CitizenRegistrationState registration)
+        {
+            _citizenRegistrations.Add(registration);
+        }
+
+        public bool TryGetCitizenRegistration(WorldEntityId citizenId, out CitizenRegistrationState registration)
+        {
+            for (int i = 0; i < _citizenRegistrations.Count; i++) {
+                if (_citizenRegistrations[i].CitizenId == citizenId) {
+                    registration = _citizenRegistrations[i];
+                    return true;
+                }
+            }
+
+            registration = null;
+            return false;
+        }
+
+        public bool TryGetActiveCitizenGoal(WorldEntityId citizenId, GameDateTime now, out CitizenGoalState goal)
+        {
+            goal = null;
+            for (int i = 0; i < _citizenGoals.Count; i++) {
+                CitizenGoalState candidate = _citizenGoals[i];
+                if (candidate.CitizenId != citizenId || candidate.Status != CitizenGoalStatus.Active) {
+                    continue;
+                }
+
+                if (IsAfter(now, candidate.ExpiresAt)) {
+                    candidate.Expire();
+                    continue;
+                }
+
+                if (goal == null || candidate.Urgency > goal.Urgency) {
+                    goal = candidate;
+                }
+            }
+
+            return goal != null;
         }
 
         public void MoveCitizen(WorldEntityId citizenId, WorldEntityId regionId, WorldEntityId sceneId, WorldEntityId placeId, GridCoord coord, CitizenActivityState activity)
@@ -164,6 +226,23 @@ namespace Legacy.World
         public bool TryGetPlot(WorldEntityId id, out PlotState plot)
         {
             return _entities.TryGetPlot(id, out plot);
+        }
+
+        public bool TryGetTerritoryChunk(WorldEntityId id, out TerritoryChunkState territoryChunk)
+        {
+            return _entities.TryGetTerritoryChunk(id, out territoryChunk);
+        }
+
+        private static bool IsAfter(GameDateTime left, GameDateTime right)
+        {
+            long leftMinute = ToAbsoluteMinute(left);
+            long rightMinute = ToAbsoluteMinute(right);
+            return leftMinute > rightMinute;
+        }
+
+        private static long ToAbsoluteMinute(GameDateTime dateTime)
+        {
+            return (long)dateTime.Date.AbsoluteDay * 1440L + dateTime.Time.TotalMinutes;
         }
     }
 }

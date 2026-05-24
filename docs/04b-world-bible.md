@@ -12,7 +12,7 @@ All names in this document are **[PLACEHOLDER]** and may be revised. They are re
 
 ---
 
-## The country: Marenne [PLACEHOLDER]
+## The starting country: Marenne [PLACEHOLDER]
 
 - **Government:** Federal republic with three layers — federal, provincial, municipal
 - **Population:** Roughly 38 million in fiction (player population is whatever the game has)
@@ -23,6 +23,8 @@ All names in this document are **[PLACEHOLDER]** and may be revised. They are re
 - **Driving side:** Right. (Decision: matches more pixel-art reference material than left-hand drive.)
 - **Major industries:** Manufacturing (north), agriculture (central plains), services and finance (south/coast)
 - **National sport:** Football (soccer in US terms); also a regional cricket-like game called **stoop** [PLACEHOLDER]
+
+Marenne is the seeded starting country, not the permanent limit of civilization. At launch, players begin inside its capital sphere and surrounding province. Over the long horizon, the world contains unsettled frontier territory where players can claim land, found settlements, and eventually create new jurisdictions that may become country-like through history, infrastructure, borders, population, and recognition.
 
 ### Recent history (drip-feed only)
 - **1948–1958:** Post-war reconstruction. Big factories built. Population boom.
@@ -36,7 +38,15 @@ NPCs and newspapers may *allude* to events from this timeline. We do not documen
 
 ---
 
-## The province: Aldwich Province [PLACEHOLDER]
+## The capital and province
+
+### The capital: Hesperin [PLACEHOLDER]
+
+Hesperin is the large seeded capital city and the first dense civilization anchor for the full game. It is the place where early public institutions, major markets, cultural venues, courts, press, universities, and high-density neighborhoods exist before players expand outward.
+
+For the prototype, Veyne remains the playable small block because it is easier to build, read, and test. In the full game, Veyne can either become a district/satellite town within the capital region or remain an early testbed name while Hesperin becomes the canonical capital map.
+
+### Aldwich Province [PLACEHOLDER]
 
 The province in which the slice town **Veyne** sits.
 
@@ -45,6 +55,30 @@ The province in which the slice town **Veyne** sits.
 - **Climate:** Temperate. Four real seasons. Mild summers, snowy winters, beautiful springs and autumns
 - **Industry in Aldwich:** Manufacturing in the river towns, agriculture in the hill country, fishing on the lakes
 - **Vibe:** Working-class to middle-class. Practical. Not glamorous. Quietly proud.
+
+---
+
+## Wilderness and frontier
+
+Outside the capital and older towns, Marenne has large areas of forest, grassland, lake country, hills, farms, and unused rural land. This space is not empty content; it is future civilization.
+
+### Frontier territory starts as
+- **Unclaimed land** — no private owner, no settlement government, no local services
+- **Biome-tagged chunks** — forest, grassland, lakeside, hill, wetland, farmland potential
+- **Sparse infrastructure** — dirt roads, old rail beds, trails, ferry crossings, utility gaps
+- **Low population** — cabins, farms, ranger posts, small hamlets, or no residents at all
+
+### Players can eventually transform it by
+- claiming or leasing land through in-world systems
+- clearing/building roads and infrastructure
+- constructing homes, workplaces, stores, schools, clinics, and civic buildings
+- founding named settlements
+- attracting residents, workers, families, and trade
+- creating local rules, charters, public records, and eventually jurisdictions
+
+### Design rule
+
+Do not begin by hardcoding "new country" as a menu action. Start with land, settlement, infrastructure, population, public records, and jurisdiction. A country is a late emergent status when a settlement network has recognized borders, governance, economy, history, and civic identity.
 
 ---
 

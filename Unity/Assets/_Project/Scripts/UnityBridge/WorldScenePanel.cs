@@ -7,6 +7,10 @@ namespace Legacy.UnityBridge
     {
         private void OnGUI()
         {
+            if (!WorldDebugPanel.IsVisible) {
+                return;
+            }
+
             if (WorldBootstrap.Runtime == null) {
                 return;
             }
@@ -20,6 +24,7 @@ namespace Legacy.UnityBridge
             GUILayout.Label($"Active world scene: {sceneName}");
             GUILayout.Label("1 = Linden Street exterior");
             GUILayout.Label("2 = Linden Cafe interior");
+            GUILayout.Label("3 = Pell Pharmacy interior");
             GUILayout.EndArea();
         }
     }

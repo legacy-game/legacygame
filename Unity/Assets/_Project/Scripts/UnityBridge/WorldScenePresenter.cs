@@ -6,7 +6,10 @@ namespace Legacy.UnityBridge
 {
     public sealed class WorldScenePresenter : MonoBehaviour
     {
+        private static readonly WorldEntityId PlayerCitizenId = new("citizen_noaharan");
+
         [SerializeField] private string _sceneId = WorldSceneIds.ExteriorSceneId;
+        [SerializeField] private PropertyInfoPanel _infoPanel;
 
         private readonly List<GameObject> _spawned = new();
 
@@ -15,11 +18,17 @@ namespace Legacy.UnityBridge
             _sceneId = sceneId;
         }
 
+        public void SetInfoPanel(PropertyInfoPanel infoPanel)
+        {
+            _infoPanel = infoPanel;
+        }
+
         private void Start()
         {
             Rebuild();
 
             if (WorldBootstrap.Runtime != null) {
+                WorldBootstrap.Runtime.CommandExecuted += OnWorldCommandExecuted;
                 WorldBootstrap.Runtime.StateReplaced += OnWorldStateReplaced;
             }
         }
@@ -27,7 +36,15 @@ namespace Legacy.UnityBridge
         private void OnDestroy()
         {
             if (WorldBootstrap.Runtime != null) {
+                WorldBootstrap.Runtime.CommandExecuted -= OnWorldCommandExecuted;
                 WorldBootstrap.Runtime.StateReplaced -= OnWorldStateReplaced;
+            }
+        }
+
+        private void OnWorldCommandExecuted(Commands.WorldCommandResult result)
+        {
+            if (result.Succeeded) {
+                Rebuild();
             }
         }
 
@@ -54,6 +71,17 @@ namespace Legacy.UnityBridge
                     index++;
                 }
             }
+
+            IReadOnlyList<WorldEntityId> citizenIds = WorldBootstrap.Runtime.State.GetCitizenIdsInScene(sceneId);
+            for (int i = 0; i < citizenIds.Count; i++) {
+                if (WorldBootstrap.Runtime.State.TryGetCitizen(citizenIds[i], out CitizenState citizen)) {
+                    if (citizen.Id == PlayerCitizenId) {
+                        continue;
+                    }
+
+                    SpawnCitizen(citizen, i);
+                }
+            }
         }
 
         private void SpawnBuilding(BuildingState building, int index)
@@ -61,58 +89,117 @@ namespace Legacy.UnityBridge
             bool isInteriorView = building.InteriorSceneId == new WorldEntityId(_sceneId);
             Vector3 position = isInteriorView
                 ? Vector3.zero
-                : new Vector3(-2.25f + index * 4.5f, 0f, 0f);
+                : ExteriorBuildingPosition(index);
 
             Color color = isInteriorView
-                ? new Color(0.42f, 0.26f, 0.18f)
+                ? new Color(0.30f, 0.22f, 0.17f)
                 : ColorForIndex(index);
-
-            GameObject propertyObject = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            GameObject propertyObject = GameObject.CreatePrimitive(PrimitiveType.Quad);
             propertyObject.name = $"{building.DisplayName}_View";
             propertyObject.transform.SetParent(transform);
-            propertyObject.transform.position = position;
-            propertyObject.transform.localScale = new Vector3(3.5f, 2f, 0.2f);
+            propertyObject.transform.position = new Vector3(position.x, position.y, 0f);
+            propertyObject.transform.localScale = isInteriorView
+                ? new Vector3(4.8f, 2.6f, 1f)
+                : new Vector3(2.25f, 1.55f, 1f);
+            Remove3DCollider(propertyObject);
 
-            BoxCollider boxCollider = propertyObject.GetComponent<BoxCollider>();
-            if (boxCollider != null) {
-                DestroyImmediate(boxCollider);
+            BoxCollider2D collider = propertyObject.GetComponent<BoxCollider2D>();
+            if (collider == null) {
+                collider = propertyObject.AddComponent<BoxCollider2D>();
             }
 
-            BoxCollider2D collider = propertyObject.AddComponent<BoxCollider2D>();
-            collider.size = Vector2.one;
+            if (collider != null) {
+                collider.size = new Vector2(2.2f, 1.4f);
+            }
 
             Renderer renderer = propertyObject.GetComponent<Renderer>();
-            renderer.material = new Material(Shader.Find("Universal Render Pipeline/Lit")) {
-                color = color
-            };
+            renderer.material = CreateFlatMaterial(color);
 
             BuildingView buildingView = propertyObject.AddComponent<BuildingView>();
             buildingView.SetBuildingId(building.Id.Value);
-            buildingView.SetLabel(CreateBuildingLabel(propertyObject.transform));
+            buildingView.SetInfoPanel(_infoPanel);
+            InteractableView interactable = propertyObject.AddComponent<InteractableView>();
+            interactable.Configure(buildingView.GetPrompt, buildingView.Interact);
 
             _spawned.Add(propertyObject);
         }
 
-        private TextMesh CreateBuildingLabel(Transform parent)
+        private void SpawnCitizen(CitizenState citizen, int index)
         {
-            GameObject labelObject = new GameObject("OwnershipLabel");
-            labelObject.transform.SetParent(parent);
-            labelObject.transform.localPosition = new Vector3(-0.45f, 1.3f, -0.2f);
-            labelObject.transform.localScale = Vector3.one * 0.18f;
+            Vector3 position = GridToWorld(citizen.CurrentCoord, index);
+            position += new Vector3(0.55f, 0.25f + index * 0.15f, -0.25f);
 
-            TextMesh label = labelObject.AddComponent<TextMesh>();
-            label.anchor = TextAnchor.MiddleCenter;
-            label.alignment = TextAlignment.Center;
-            label.fontSize = 24;
-            label.color = Color.white;
-            return label;
+            GameObject citizenObject = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            citizenObject.name = $"{citizen.DisplayName}_Citizen";
+            citizenObject.transform.SetParent(transform);
+            citizenObject.transform.position = position;
+            citizenObject.transform.localScale = new Vector3(0.55f, 0.85f, 1f);
+            Remove3DCollider(citizenObject);
+
+            Renderer renderer = citizenObject.GetComponent<Renderer>();
+            renderer.material = CreateFlatMaterial(ColorForCitizen(citizen));
+
+            CitizenView citizenView = citizenObject.AddComponent<CitizenView>();
+            citizenView.SetCitizenId(citizen.Id.Value);
+            citizenView.SetInfoPanel(_infoPanel);
+            InteractableView interactable = citizenObject.AddComponent<InteractableView>();
+            interactable.Configure(citizenView.GetPrompt, citizenView.Interact);
+
+            _spawned.Add(citizenObject);
         }
 
         private Color ColorForIndex(int index)
         {
             return index % 2 == 0
-                ? new Color(0.55f, 0.36f, 0.24f)
-                : new Color(0.25f, 0.38f, 0.50f);
+                ? new Color(0.38f, 0.25f, 0.18f)
+                : new Color(0.18f, 0.30f, 0.38f);
+        }
+
+        private Color ColorForCitizen(CitizenState citizen)
+        {
+            return citizen.Activity == CitizenActivityState.Working
+                ? new Color(0.35f, 0.60f, 0.45f)
+                : new Color(0.50f, 0.45f, 0.70f);
+        }
+
+        private Vector3 GridToWorld(GridCoord coord, int fallbackIndex)
+        {
+            if (_sceneId != WorldSceneIds.ExteriorSceneId) {
+                return new Vector3(-1.2f + fallbackIndex * 1.2f, -0.35f, -0.1f);
+            }
+
+            return new Vector3((coord.X - 15f) * 0.38f, (coord.Y - 7f) * 0.32f, -0.1f);
+        }
+
+        private Vector3 ExteriorBuildingPosition(int index)
+        {
+            return index == 0
+                ? new Vector3(-2.4f, 0.75f, -0.1f)
+                : new Vector3(2.4f, 0.75f, -0.1f);
+        }
+
+        private Material CreateFlatMaterial(Color color)
+        {
+            Shader shader = Shader.Find("Universal Render Pipeline/Unlit");
+            if (shader == null) {
+                shader = Shader.Find("Sprites/Default");
+            }
+
+            if (shader == null) {
+                shader = Shader.Find("Unlit/Color");
+            }
+
+            return new Material(shader) {
+                color = color
+            };
+        }
+
+        private void Remove3DCollider(GameObject target)
+        {
+            Collider collider = target.GetComponent<Collider>();
+            if (collider != null) {
+                DestroyImmediate(collider);
+            }
         }
 
         private void Clear()

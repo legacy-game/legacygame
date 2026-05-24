@@ -21,7 +21,8 @@ namespace Legacy.Commands
         public WorldCommandResult Execute(WorldCommandContext context)
         {
             GameDateTime previousTime = context.State.CurrentTime;
-            context.State.SetTime(context.State.CurrentTime.AddMinutes(_minutes));
+            context.Clock.AdvanceMinutes(_minutes);
+            context.State.SetTime(context.Clock.Now);
 
             HistoryEvent historyEvent = context.History.Create(
                 context.State.CurrentTime,
