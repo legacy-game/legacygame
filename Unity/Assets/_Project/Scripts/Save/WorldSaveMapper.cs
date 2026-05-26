@@ -77,6 +77,50 @@ namespace Legacy.Save
                 data.roleAssignments.Add(ToSaveData(assignment));
             }
 
+            foreach (JobPostingState posting in state.JobPostingsById.Values) {
+                data.jobPostings.Add(ToSaveData(posting));
+            }
+
+            foreach (JobApplicationState application in state.JobApplicationsById.Values) {
+                data.jobApplications.Add(ToSaveData(application));
+            }
+
+            foreach (EmploymentContractState contract in state.EmploymentContractsById.Values) {
+                data.employmentContracts.Add(ToSaveData(contract));
+            }
+
+            foreach (WorkplaceState workplace in state.WorkplacesById.Values) {
+                data.workplaces.Add(ToSaveData(workplace));
+            }
+
+            foreach (ShiftState shift in state.ShiftsById.Values) {
+                data.shifts.Add(ToSaveData(shift));
+            }
+
+            foreach (JobTaskState task in state.JobTasksById.Values) {
+                data.jobTasks.Add(ToSaveData(task));
+            }
+
+            foreach (WorkplaceInventoryState inventory in state.WorkplaceInventoriesById.Values) {
+                data.workplaceInventories.Add(ToSaveData(inventory));
+            }
+
+            foreach (SkillState skill in state.SkillStates) {
+                data.skills.Add(ToSaveData(skill));
+            }
+
+            foreach (PerformanceRecordState record in state.PerformanceRecords) {
+                data.performanceRecords.Add(ToSaveData(record));
+            }
+
+            foreach (MoneyAccountState account in state.MoneyAccountsById.Values) {
+                data.moneyAccounts.Add(ToSaveData(account));
+            }
+
+            foreach (TransactionState transaction in state.Transactions) {
+                data.transactions.Add(ToSaveData(transaction));
+            }
+
             foreach (PlotState plot in state.PlotsById.Values) {
                 data.plots.Add(new PlotSaveData {
                     id = plot.Id.Value,
@@ -188,6 +232,72 @@ namespace Legacy.Save
             if (data.roleAssignments != null) {
                 foreach (RoleAssignmentSaveData assignment in data.roleAssignments) {
                     state.AddRoleAssignment(ToRuntime(assignment));
+                }
+            }
+
+            if (data.jobPostings != null) {
+                foreach (JobPostingSaveData posting in data.jobPostings) {
+                    state.AddJobPosting(ToRuntime(posting));
+                }
+            }
+
+            if (data.jobApplications != null) {
+                foreach (JobApplicationSaveData application in data.jobApplications) {
+                    state.AddJobApplication(ToRuntime(application));
+                }
+            }
+
+            if (data.employmentContracts != null) {
+                foreach (EmploymentContractSaveData contract in data.employmentContracts) {
+                    state.AddEmploymentContract(ToRuntime(contract));
+                }
+            }
+
+            if (data.workplaces != null) {
+                foreach (WorkplaceSaveData workplace in data.workplaces) {
+                    state.AddWorkplace(ToRuntime(workplace));
+                }
+            }
+
+            if (data.shifts != null) {
+                foreach (ShiftSaveData shift in data.shifts) {
+                    state.AddShift(ToRuntime(shift));
+                }
+            }
+
+            if (data.jobTasks != null) {
+                foreach (JobTaskSaveData task in data.jobTasks) {
+                    state.AddJobTask(ToRuntime(task));
+                }
+            }
+
+            if (data.workplaceInventories != null) {
+                foreach (WorkplaceInventorySaveData inventory in data.workplaceInventories) {
+                    state.AddWorkplaceInventory(ToRuntime(inventory));
+                }
+            }
+
+            if (data.skills != null) {
+                foreach (SkillSaveData skill in data.skills) {
+                    state.AddSkillState(ToRuntime(skill));
+                }
+            }
+
+            if (data.performanceRecords != null) {
+                foreach (PerformanceRecordSaveData record in data.performanceRecords) {
+                    state.AddPerformanceRecord(ToRuntime(record));
+                }
+            }
+
+            if (data.moneyAccounts != null) {
+                foreach (MoneyAccountSaveData account in data.moneyAccounts) {
+                    state.AddMoneyAccount(ToRuntime(account));
+                }
+            }
+
+            if (data.transactions != null) {
+                foreach (TransactionSaveData transaction in data.transactions) {
+                    state.AddTransaction(ToRuntime(transaction));
                 }
             }
 
@@ -363,6 +473,320 @@ namespace Legacy.Save
                 assignment.roleId,
                 Id(assignment.workplacePlaceId),
                 assignment.isActive);
+        }
+
+        private static JobPostingSaveData ToSaveData(JobPostingState posting)
+        {
+            return new JobPostingSaveData {
+                id = posting.Id.Value,
+                jobDefinitionId = posting.JobDefinitionId,
+                employerCitizenId = posting.EmployerCitizenId.Value,
+                workplaceId = posting.WorkplaceId.Value,
+                roleId = posting.RoleId,
+                payModel = posting.PayModel.ToString(),
+                payCents = posting.PayCents,
+                openSlots = posting.OpenSlots,
+                status = posting.Status.ToString(),
+                createdAt = ToSaveData(posting.CreatedAt)
+            };
+        }
+
+        private static JobPostingState ToRuntime(JobPostingSaveData posting)
+        {
+            return new JobPostingState(
+                Id(posting.id),
+                posting.jobDefinitionId,
+                Id(posting.employerCitizenId),
+                Id(posting.workplaceId),
+                posting.roleId,
+                Enum.Parse<PayModelKind>(posting.payModel),
+                posting.payCents,
+                posting.openSlots,
+                Enum.Parse<JobPostingStatus>(posting.status),
+                ToRuntime(posting.createdAt));
+        }
+
+        private static JobApplicationSaveData ToSaveData(JobApplicationState application)
+        {
+            return new JobApplicationSaveData {
+                id = application.Id.Value,
+                postingId = application.PostingId.Value,
+                applicantCitizenId = application.ApplicantCitizenId.Value,
+                status = application.Status.ToString(),
+                createdAt = ToSaveData(application.CreatedAt)
+            };
+        }
+
+        private static JobApplicationState ToRuntime(JobApplicationSaveData application)
+        {
+            return new JobApplicationState(
+                Id(application.id),
+                Id(application.postingId),
+                Id(application.applicantCitizenId),
+                Enum.Parse<JobApplicationStatus>(application.status),
+                ToRuntime(application.createdAt));
+        }
+
+        private static EmploymentContractSaveData ToSaveData(EmploymentContractState contract)
+        {
+            return new EmploymentContractSaveData {
+                id = contract.Id.Value,
+                postingId = contract.PostingId.Value,
+                employerCitizenId = contract.EmployerCitizenId.Value,
+                workerCitizenId = contract.WorkerCitizenId.Value,
+                workplaceId = contract.WorkplaceId.Value,
+                jobDefinitionId = contract.JobDefinitionId,
+                roleId = contract.RoleId,
+                payModel = contract.PayModel.ToString(),
+                payCents = contract.PayCents,
+                status = contract.Status.ToString(),
+                startedAt = ToSaveData(contract.StartedAt)
+            };
+        }
+
+        private static EmploymentContractState ToRuntime(EmploymentContractSaveData contract)
+        {
+            return new EmploymentContractState(
+                Id(contract.id),
+                OptionalId(contract.postingId),
+                Id(contract.employerCitizenId),
+                Id(contract.workerCitizenId),
+                Id(contract.workplaceId),
+                contract.jobDefinitionId,
+                contract.roleId,
+                Enum.Parse<PayModelKind>(contract.payModel),
+                contract.payCents,
+                Enum.Parse<EmploymentContractStatus>(contract.status),
+                ToRuntime(contract.startedAt));
+        }
+
+        private static WorkplaceSaveData ToSaveData(WorkplaceState workplace)
+        {
+            var data = new WorkplaceSaveData {
+                id = workplace.Id.Value,
+                buildingId = workplace.BuildingId.Value,
+                placeId = workplace.PlaceId.Value,
+                ownerCitizenId = workplace.OwnerCitizenId.Value,
+                businessAccountId = workplace.BusinessAccountId.Value,
+                status = workplace.Status.ToString(),
+                opensAtMinute = workplace.OpensAtMinute,
+                closesAtMinute = workplace.ClosesAtMinute
+            };
+
+            foreach (WorldEntityId id in workplace.ActiveShiftIds) {
+                data.activeShiftIds.Add(id.Value);
+            }
+
+            foreach (WorldEntityId id in workplace.QueuedTaskIds) {
+                data.queuedTaskIds.Add(id.Value);
+            }
+
+            return data;
+        }
+
+        private static WorkplaceState ToRuntime(WorkplaceSaveData workplace)
+        {
+            var state = new WorkplaceState(
+                Id(workplace.id),
+                Id(workplace.buildingId),
+                Id(workplace.placeId),
+                Id(workplace.ownerCitizenId),
+                Id(workplace.businessAccountId),
+                Enum.Parse<WorkplaceStatus>(workplace.status),
+                workplace.opensAtMinute,
+                workplace.closesAtMinute);
+
+            foreach (string shiftId in workplace.activeShiftIds) {
+                state.AddActiveShift(Id(shiftId));
+            }
+
+            foreach (string taskId in workplace.queuedTaskIds) {
+                state.EnqueueTask(Id(taskId));
+            }
+
+            return state;
+        }
+
+        private static ShiftSaveData ToSaveData(ShiftState shift)
+        {
+            var data = new ShiftSaveData {
+                id = shift.Id.Value,
+                contractId = shift.ContractId.Value,
+                workerCitizenId = shift.WorkerCitizenId.Value,
+                workplaceId = shift.WorkplaceId.Value,
+                startedAt = ToSaveData(shift.StartedAt),
+                expectedEndAt = ToSaveData(shift.ExpectedEndAt),
+                endedAt = ToSaveData(shift.EndedAt),
+                status = shift.Status.ToString(),
+                earnedCents = shift.EarnedCents
+            };
+
+            foreach (WorldEntityId taskId in shift.CompletedTaskIds) {
+                data.completedTaskIds.Add(taskId.Value);
+            }
+
+            return data;
+        }
+
+        private static ShiftState ToRuntime(ShiftSaveData shift)
+        {
+            var state = new ShiftState(
+                Id(shift.id),
+                Id(shift.contractId),
+                Id(shift.workerCitizenId),
+                Id(shift.workplaceId),
+                ToRuntime(shift.startedAt),
+                ToRuntime(shift.expectedEndAt),
+                ToRuntime(shift.endedAt),
+                Enum.Parse<ShiftStatus>(shift.status),
+                shift.earnedCents);
+
+            foreach (string taskId in shift.completedTaskIds) {
+                state.CompleteTask(Id(taskId), 0);
+            }
+
+            return state;
+        }
+
+        private static JobTaskSaveData ToSaveData(JobTaskState task)
+        {
+            var data = new JobTaskSaveData {
+                id = task.Id.Value,
+                definitionId = task.DefinitionId,
+                workplaceId = task.WorkplaceId.Value,
+                assignedWorkerId = task.AssignedWorkerId.Value,
+                shiftId = task.ShiftId.Value,
+                targetEntityId = task.TargetEntityId.Value,
+                status = task.Status.ToString(),
+                quality = task.Quality,
+                createdAt = ToSaveData(task.CreatedAt),
+                startedAt = ToSaveData(task.StartedAt),
+                completedAt = ToSaveData(task.CompletedAt)
+            };
+
+            if (task.MiniGameResult != null) {
+                data.hasMiniGameResult = true;
+                data.miniGameScore = task.MiniGameResult.Score;
+                data.miniGameMaxScore = task.MiniGameResult.MaxScore;
+                data.miniGameQuality = task.MiniGameResult.Quality;
+                data.miniGameDurationSeconds = task.MiniGameResult.DurationSeconds;
+                data.miniGameMistakes = task.MiniGameResult.Mistakes;
+            }
+
+            return data;
+        }
+
+        private static JobTaskState ToRuntime(JobTaskSaveData task)
+        {
+            MiniGameResultState result = task.hasMiniGameResult
+                ? new MiniGameResultState(task.miniGameScore, task.miniGameMaxScore, task.miniGameQuality, task.miniGameDurationSeconds, task.miniGameMistakes)
+                : null;
+            return new JobTaskState(
+                Id(task.id),
+                task.definitionId,
+                Id(task.workplaceId),
+                OptionalId(task.assignedWorkerId),
+                OptionalId(task.shiftId),
+                OptionalId(task.targetEntityId),
+                Enum.Parse<JobTaskStatus>(task.status),
+                task.quality,
+                ToRuntime(task.createdAt),
+                ToRuntime(task.startedAt),
+                ToRuntime(task.completedAt),
+                result);
+        }
+
+        private static WorkplaceInventorySaveData ToSaveData(WorkplaceInventoryState inventory)
+        {
+            var data = new WorkplaceInventorySaveData { workplaceId = inventory.WorkplaceId.Value };
+            foreach (InventoryStackState stack in inventory.Stacks) {
+                data.stacks.Add(new InventoryStackSaveData { itemId = stack.ItemId, count = stack.Count });
+            }
+
+            return data;
+        }
+
+        private static WorkplaceInventoryState ToRuntime(WorkplaceInventorySaveData inventory)
+        {
+            var state = new WorkplaceInventoryState(Id(inventory.workplaceId));
+            foreach (InventoryStackSaveData stack in inventory.stacks) {
+                state.Add(stack.itemId, stack.count);
+            }
+
+            return state;
+        }
+
+        private static SkillSaveData ToSaveData(SkillState skill)
+        {
+            return new SkillSaveData { citizenId = skill.CitizenId.Value, skill = skill.Skill.ToString(), experience = skill.Experience };
+        }
+
+        private static SkillState ToRuntime(SkillSaveData skill)
+        {
+            return new SkillState(Id(skill.citizenId), Enum.Parse<SkillKind>(skill.skill), skill.experience);
+        }
+
+        private static PerformanceRecordSaveData ToSaveData(PerformanceRecordState record)
+        {
+            return new PerformanceRecordSaveData {
+                id = record.Id.Value,
+                citizenId = record.CitizenId.Value,
+                workplaceId = record.WorkplaceId.Value,
+                note = record.Note,
+                score = record.Score,
+                createdAt = ToSaveData(record.CreatedAt)
+            };
+        }
+
+        private static PerformanceRecordState ToRuntime(PerformanceRecordSaveData record)
+        {
+            return new PerformanceRecordState(Id(record.id), Id(record.citizenId), Id(record.workplaceId), record.note, record.score, ToRuntime(record.createdAt));
+        }
+
+        private static MoneyAccountSaveData ToSaveData(MoneyAccountState account)
+        {
+            return new MoneyAccountSaveData {
+                id = account.Id.Value,
+                ownerEntityId = account.OwnerEntityId.Value,
+                displayName = account.DisplayName,
+                balanceCents = account.BalanceCents
+            };
+        }
+
+        private static MoneyAccountState ToRuntime(MoneyAccountSaveData account)
+        {
+            return new MoneyAccountState(
+                Id(account.id),
+                Id(account.ownerEntityId),
+                account.displayName,
+                account.balanceCents);
+        }
+
+        private static TransactionSaveData ToSaveData(TransactionState transaction)
+        {
+            return new TransactionSaveData {
+                id = transaction.Id.Value,
+                timestamp = ToSaveData(transaction.Timestamp),
+                payerAccountId = transaction.PayerAccountId.Value,
+                payeeAccountId = transaction.PayeeAccountId.Value,
+                amountCents = transaction.AmountCents,
+                reason = transaction.Reason,
+                relatedPlaceId = transaction.RelatedPlaceId.Value,
+                actionKind = transaction.ActionKind.ToString()
+            };
+        }
+
+        private static TransactionState ToRuntime(TransactionSaveData transaction)
+        {
+            return new TransactionState(
+                Id(transaction.id),
+                ToRuntime(transaction.timestamp),
+                Id(transaction.payerAccountId),
+                Id(transaction.payeeAccountId),
+                transaction.amountCents,
+                transaction.reason,
+                OptionalId(transaction.relatedPlaceId),
+                Enum.Parse<WorldActionKind>(transaction.actionKind));
         }
 
         private static TerritoryChunkState ToRuntime(TerritoryChunkSaveData territory)

@@ -118,6 +118,7 @@ namespace Legacy.UnityBridge
             BuildingView buildingView = propertyObject.AddComponent<BuildingView>();
             buildingView.SetBuildingId(building.Id.Value);
             buildingView.SetInfoPanel(_infoPanel);
+            buildingView.SetLabel(CreateLabel(propertyObject.transform, new Vector3(0f, -1.1f, -0.05f), building.DisplayName));
             InteractableView interactable = propertyObject.AddComponent<InteractableView>();
             interactable.Configure(buildingView.GetPrompt, buildingView.Interact);
 
@@ -142,6 +143,7 @@ namespace Legacy.UnityBridge
             CitizenView citizenView = citizenObject.AddComponent<CitizenView>();
             citizenView.SetCitizenId(citizen.Id.Value);
             citizenView.SetInfoPanel(_infoPanel);
+            citizenView.SetLabel(CreateLabel(citizenObject.transform, new Vector3(0f, -0.8f, -0.05f), citizen.DisplayName));
             InteractableView interactable = citizenObject.AddComponent<InteractableView>();
             interactable.Configure(citizenView.GetPrompt, citizenView.Interact);
 
@@ -173,9 +175,29 @@ namespace Legacy.UnityBridge
 
         private Vector3 ExteriorBuildingPosition(int index)
         {
-            return index == 0
-                ? new Vector3(-2.4f, 0.75f, -0.1f)
-                : new Vector3(2.4f, 0.75f, -0.1f);
+            return index switch {
+                0 => new Vector3(-4.6f, 0.75f, -0.1f),
+                1 => new Vector3(-1.3f, 0.75f, -0.1f),
+                2 => new Vector3(2.3f, 0.75f, -0.1f),
+                _ => new Vector3(5.2f + (index - 3) * 2.4f, 0.75f, -0.1f)
+            };
+        }
+
+        private TextMesh CreateLabel(Transform parent, Vector3 localPosition, string text)
+        {
+            var labelObject = new GameObject("Label");
+            labelObject.transform.SetParent(parent);
+            labelObject.transform.localPosition = localPosition;
+            labelObject.transform.localScale = Vector3.one * 0.18f;
+
+            TextMesh label = labelObject.AddComponent<TextMesh>();
+            label.text = text;
+            label.anchor = TextAnchor.MiddleCenter;
+            label.alignment = TextAlignment.Center;
+            label.characterSize = 0.3f;
+            label.fontSize = 18;
+            label.color = Color.white;
+            return label;
         }
 
         private Material CreateFlatMaterial(Color color)

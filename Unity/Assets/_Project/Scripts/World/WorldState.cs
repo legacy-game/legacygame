@@ -14,7 +14,19 @@ namespace Legacy.World
         private readonly List<CitizenGoalState> _citizenGoals = new();
         private readonly List<RoleAssignmentState> _roleAssignments = new();
         private readonly List<CitizenRegistrationState> _citizenRegistrations = new();
+        private readonly Dictionary<WorldEntityId, JobPostingState> _jobPostingsById = new();
+        private readonly Dictionary<WorldEntityId, JobApplicationState> _jobApplicationsById = new();
+        private readonly Dictionary<WorldEntityId, EmploymentContractState> _employmentContractsById = new();
+        private readonly Dictionary<WorldEntityId, WorkplaceState> _workplacesById = new();
+        private readonly Dictionary<WorldEntityId, ShiftState> _shiftsById = new();
+        private readonly Dictionary<WorldEntityId, JobTaskState> _jobTasksById = new();
+        private readonly Dictionary<WorldEntityId, WorkplaceInventoryState> _workplaceInventoriesById = new();
+        private readonly List<SkillState> _skillStates = new();
+        private readonly List<PerformanceRecordState> _performanceRecords = new();
+        private readonly Dictionary<WorldEntityId, MoneyAccountState> _moneyAccountsById = new();
+        private readonly List<TransactionState> _transactions = new();
         private readonly HistoryStore _history;
+        private long _nextTransactionNumber = 1;
 
         public int SchemaVersion { get; }
         public long WorldSeed { get; }
@@ -31,6 +43,17 @@ namespace Legacy.World
         public IReadOnlyList<CitizenGoalState> CitizenGoals => _citizenGoals;
         public IReadOnlyList<RoleAssignmentState> RoleAssignments => _roleAssignments;
         public IReadOnlyList<CitizenRegistrationState> CitizenRegistrations => _citizenRegistrations;
+        public IReadOnlyDictionary<WorldEntityId, JobPostingState> JobPostingsById => _jobPostingsById;
+        public IReadOnlyDictionary<WorldEntityId, JobApplicationState> JobApplicationsById => _jobApplicationsById;
+        public IReadOnlyDictionary<WorldEntityId, EmploymentContractState> EmploymentContractsById => _employmentContractsById;
+        public IReadOnlyDictionary<WorldEntityId, WorkplaceState> WorkplacesById => _workplacesById;
+        public IReadOnlyDictionary<WorldEntityId, ShiftState> ShiftsById => _shiftsById;
+        public IReadOnlyDictionary<WorldEntityId, JobTaskState> JobTasksById => _jobTasksById;
+        public IReadOnlyDictionary<WorldEntityId, WorkplaceInventoryState> WorkplaceInventoriesById => _workplaceInventoriesById;
+        public IReadOnlyList<SkillState> SkillStates => _skillStates;
+        public IReadOnlyList<PerformanceRecordState> PerformanceRecords => _performanceRecords;
+        public IReadOnlyDictionary<WorldEntityId, MoneyAccountState> MoneyAccountsById => _moneyAccountsById;
+        public IReadOnlyList<TransactionState> Transactions => _transactions;
         public IReadOnlyList<HistoryEvent> RecentHistory => _history.RecentHistory;
         public IHistoryArchive HistoryArchive => _history.Archive;
 
@@ -105,6 +128,183 @@ namespace Legacy.World
         public void AddCitizenRegistration(CitizenRegistrationState registration)
         {
             _citizenRegistrations.Add(registration);
+        }
+
+        public void AddJobPosting(JobPostingState posting)
+        {
+            _jobPostingsById.Add(posting.Id, posting);
+        }
+
+        public void AddJobApplication(JobApplicationState application)
+        {
+            _jobApplicationsById.Add(application.Id, application);
+        }
+
+        public void AddEmploymentContract(EmploymentContractState contract)
+        {
+            _employmentContractsById.Add(contract.Id, contract);
+        }
+
+        public void AddWorkplace(WorkplaceState workplace)
+        {
+            _workplacesById.Add(workplace.Id, workplace);
+        }
+
+        public void AddShift(ShiftState shift)
+        {
+            _shiftsById.Add(shift.Id, shift);
+            if (_workplacesById.TryGetValue(shift.WorkplaceId, out WorkplaceState workplace)) {
+                workplace.AddActiveShift(shift.Id);
+            }
+        }
+
+        public void AddJobTask(JobTaskState task)
+        {
+            _jobTasksById.Add(task.Id, task);
+            if (_workplacesById.TryGetValue(task.WorkplaceId, out WorkplaceState workplace)) {
+                workplace.EnqueueTask(task.Id);
+            }
+        }
+
+        public void AddWorkplaceInventory(WorkplaceInventoryState inventory)
+        {
+            _workplaceInventoriesById.Add(inventory.WorkplaceId, inventory);
+        }
+
+        public void AddSkillState(SkillState skill)
+        {
+            _skillStates.Add(skill);
+        }
+
+        public void AddPerformanceRecord(PerformanceRecordState record)
+        {
+            _performanceRecords.Add(record);
+        }
+
+        public void AddMoneyAccount(MoneyAccountState account)
+        {
+            _moneyAccountsById.Add(account.Id, account);
+        }
+
+        public void AddTransaction(TransactionState transaction)
+        {
+            _transactions.Add(transaction);
+            IncludeTransactionId(transaction.Id);
+        }
+
+        public WorldEntityId CreateNextTransactionId()
+        {
+            return new WorldEntityId($"txn_{_nextTransactionNumber++:000000}");
+        }
+
+        public bool TryGetMoneyAccount(WorldEntityId id, out MoneyAccountState account)
+        {
+            return _moneyAccountsById.TryGetValue(id, out account);
+        }
+
+        public bool TryGetJobPosting(WorldEntityId id, out JobPostingState posting)
+        {
+            return _jobPostingsById.TryGetValue(id, out posting);
+        }
+
+        public bool TryGetJobApplication(WorldEntityId id, out JobApplicationState application)
+        {
+            return _jobApplicationsById.TryGetValue(id, out application);
+        }
+
+        public bool TryGetEmploymentContract(WorldEntityId id, out EmploymentContractState contract)
+        {
+            return _employmentContractsById.TryGetValue(id, out contract);
+        }
+
+        public bool TryGetWorkplace(WorldEntityId id, out WorkplaceState workplace)
+        {
+            return _workplacesById.TryGetValue(id, out workplace);
+        }
+
+        public bool TryGetWorkplaceByPlace(WorldEntityId placeId, out WorkplaceState workplace)
+        {
+            foreach (WorkplaceState candidate in _workplacesById.Values) {
+                if (candidate.PlaceId == placeId) {
+                    workplace = candidate;
+                    return true;
+                }
+            }
+
+            workplace = null;
+            return false;
+        }
+
+        public bool TryGetShift(WorldEntityId id, out ShiftState shift)
+        {
+            return _shiftsById.TryGetValue(id, out shift);
+        }
+
+        public bool TryGetActiveShift(WorldEntityId workerId, WorldEntityId workplaceId, out ShiftState shift)
+        {
+            foreach (ShiftState candidate in _shiftsById.Values) {
+                if (candidate.WorkerCitizenId == workerId &&
+                    candidate.WorkplaceId == workplaceId &&
+                    candidate.Status == ShiftStatus.Active) {
+                    shift = candidate;
+                    return true;
+                }
+            }
+
+            shift = null;
+            return false;
+        }
+
+        public bool TryGetJobTask(WorldEntityId id, out JobTaskState task)
+        {
+            return _jobTasksById.TryGetValue(id, out task);
+        }
+
+        public bool TryGetWorkplaceInventory(WorldEntityId workplaceId, out WorkplaceInventoryState inventory)
+        {
+            return _workplaceInventoriesById.TryGetValue(workplaceId, out inventory);
+        }
+
+        public bool TryGetActiveContract(WorldEntityId workerId, WorldEntityId workplaceId, string roleId, out EmploymentContractState contract)
+        {
+            foreach (EmploymentContractState candidate in _employmentContractsById.Values) {
+                if (candidate.WorkerCitizenId == workerId &&
+                    candidate.WorkplaceId == workplaceId &&
+                    candidate.RoleId == roleId &&
+                    candidate.Status == EmploymentContractStatus.Active) {
+                    contract = candidate;
+                    return true;
+                }
+            }
+
+            contract = null;
+            return false;
+        }
+
+        public SkillState GetOrCreateSkill(WorldEntityId citizenId, SkillKind skill)
+        {
+            for (int i = 0; i < _skillStates.Count; i++) {
+                if (_skillStates[i].CitizenId == citizenId && _skillStates[i].Skill == skill) {
+                    return _skillStates[i];
+                }
+            }
+
+            var state = new SkillState(citizenId, skill, 0);
+            _skillStates.Add(state);
+            return state;
+        }
+
+        public bool TryGetMoneyAccountForOwner(WorldEntityId ownerEntityId, out MoneyAccountState account)
+        {
+            foreach (MoneyAccountState candidate in _moneyAccountsById.Values) {
+                if (candidate.OwnerEntityId == ownerEntityId) {
+                    account = candidate;
+                    return true;
+                }
+            }
+
+            account = null;
+            return false;
         }
 
         public bool TryGetCitizenRegistration(WorldEntityId citizenId, out CitizenRegistrationState registration)
@@ -243,6 +443,20 @@ namespace Legacy.World
         private static long ToAbsoluteMinute(GameDateTime dateTime)
         {
             return (long)dateTime.Date.AbsoluteDay * 1440L + dateTime.Time.TotalMinutes;
+        }
+
+        private void IncludeTransactionId(WorldEntityId id)
+        {
+            const string prefix = "txn_";
+            string value = id.Value;
+            if (string.IsNullOrEmpty(value) || !value.StartsWith(prefix, System.StringComparison.Ordinal)) {
+                return;
+            }
+
+            string numberText = value.Substring(prefix.Length);
+            if (long.TryParse(numberText, out long number) && number >= _nextTransactionNumber) {
+                _nextTransactionNumber = number + 1;
+            }
         }
     }
 }

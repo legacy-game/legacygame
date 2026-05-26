@@ -141,6 +141,37 @@ namespace Legacy.Tests.EditMode
         }
 
         [Test]
+        public void SaveRoundTrip_PreservesMoneyTransactionsAndPaidWorkHistory()
+        {
+            var runtime = new WorldRuntime(WorldFactory.CreateVeyneSeedWorld());
+
+            runtime.Execute(new DoWorldActionCommand(
+                new WorldEntityId("citizen_rowan"),
+                WorldActionKind.ServeCustomer,
+                new WorldEntityId("place_linden_cafe_interior")));
+            runtime.Execute(new AcceptJobCommand(
+                new WorldEntityId("roleassign_noah_pharmacy_clerk"),
+                new WorldEntityId("citizen_noaharan"),
+                RoleCatalog.Shopkeeper,
+                new WorldEntityId("place_pell_pharmacy_interior")));
+            runtime.Execute(new DoWorldActionCommand(
+                new WorldEntityId("citizen_noaharan"),
+                WorldActionKind.StockShelves,
+                new WorldEntityId("place_pell_pharmacy_interior")));
+
+            WorldSaveData saveData = WorldSaveMapper.ToSaveData(runtime.State);
+            WorldState loaded = WorldSaveMapper.ToRuntime(saveData);
+
+            Assert.That(loaded.MoneyAccountsById[new WorldEntityId("account_linden_cafe")].BalanceCents, Is.EqualTo(runtime.State.MoneyAccountsById[new WorldEntityId("account_linden_cafe")].BalanceCents));
+            Assert.That(loaded.MoneyAccountsById[new WorldEntityId("account_pell_pharmacy")].BalanceCents, Is.EqualTo(runtime.State.MoneyAccountsById[new WorldEntityId("account_pell_pharmacy")].BalanceCents));
+            Assert.That(loaded.MoneyAccountsById[new WorldEntityId("account_noaharan_cash")].BalanceCents, Is.EqualTo(runtime.State.MoneyAccountsById[new WorldEntityId("account_noaharan_cash")].BalanceCents));
+            Assert.That(loaded.Transactions.Count, Is.EqualTo(3));
+            Assert.That(loaded.GetHistoryByKind(Legacy.History.HistoryEventKind.PaymentRecorded).Count, Is.EqualTo(3));
+            Assert.That(loaded.GetHistoryByKind(Legacy.History.HistoryEventKind.JobActionPerformed).Count, Is.EqualTo(2));
+            Assert.That(loaded.GetHistoryByKind(Legacy.History.HistoryEventKind.JobAccepted).Count, Is.EqualTo(1));
+        }
+
+        [Test]
         public void SaveRoundTrip_PreservesCitizenRegistration()
         {
             var runtime = new WorldRuntime(WorldFactory.CreateVeyneSeedWorld());

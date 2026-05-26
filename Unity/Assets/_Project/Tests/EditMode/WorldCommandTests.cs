@@ -56,17 +56,41 @@ namespace Legacy.Tests.EditMode
         [Test]
         public void RoleSystem_AuthorizesActionsByAssignedRoleAndPlace()
         {
-            WorldState state = WorldFactory.CreateVeyneSeedWorld();
-            var roleSystem = new RoleSystem(state);
+            var runtime = new WorldRuntime(WorldFactory.CreateVeyneSeedWorld());
             var noahId = new WorldEntityId("citizen_noaharan");
             var cafePlaceId = new WorldEntityId("place_linden_cafe_interior");
 
+            runtime.Execute(new AcceptJobCommand(
+                new WorldEntityId("roleassign_noah_cafe_worker"),
+                noahId,
+                RoleCatalog.CafeWorker,
+                cafePlaceId));
+
+            var roleSystem = new RoleSystem(runtime.State);
             RoleAuthorizationResult serve = roleSystem.CanPerform(noahId, WorldActionKind.ServeCustomer, cafePlaceId);
             RoleAuthorizationResult patrol = roleSystem.CanPerform(noahId, WorldActionKind.PatrolDistrict, cafePlaceId);
 
             Assert.That(serve.IsAllowed, Is.True);
-            Assert.That(serve.RoleId, Is.EqualTo(RoleCatalog.CafeOwner));
+            Assert.That(serve.RoleId, Is.EqualTo(RoleCatalog.CafeWorker));
             Assert.That(patrol.IsAllowed, Is.False);
+        }
+
+        [Test]
+        public void AcceptJobCommand_AddsRoleAndWritesHistory()
+        {
+            var runtime = new WorldRuntime(WorldFactory.CreateVeyneSeedWorld());
+            var noahId = new WorldEntityId("citizen_noaharan");
+            var pharmacyPlaceId = new WorldEntityId("place_pell_pharmacy_interior");
+
+            WorldCommandResult result = runtime.Execute(new AcceptJobCommand(
+                new WorldEntityId("roleassign_noah_pharmacy_clerk"),
+                noahId,
+                RoleCatalog.Shopkeeper,
+                pharmacyPlaceId));
+
+            Assert.That(result.Succeeded, Is.True);
+            Assert.That(new RoleSystem(runtime.State).CanPerform(noahId, WorldActionKind.StockShelves, pharmacyPlaceId).IsAllowed, Is.True);
+            Assert.That(runtime.State.GetHistoryByKind(HistoryEventKind.JobAccepted).Count, Is.EqualTo(1));
         }
 
         [Test]
@@ -92,6 +116,8 @@ namespace Legacy.Tests.EditMode
         public void DoWorldAction_AuthorizedRoleWritesHistory()
         {
             var runtime = new WorldRuntime(WorldFactory.CreateVeyneSeedWorld());
+            int startingCafeBalance = runtime.State.MoneyAccountsById[new WorldEntityId("account_linden_cafe")].BalanceCents;
+            int startingActorBalance = runtime.State.MoneyAccountsById[new WorldEntityId("account_rowan_cash")].BalanceCents;
 
             WorldCommandResult result = runtime.Execute(new DoWorldActionCommand(
                 new WorldEntityId("citizen_rowan"),
@@ -100,6 +126,10 @@ namespace Legacy.Tests.EditMode
 
             Assert.That(result.Succeeded, Is.True);
             Assert.That(result.Message, Does.Contain("ServeCustomer"));
+            Assert.That(runtime.State.MoneyAccountsById[new WorldEntityId("account_linden_cafe")].BalanceCents, Is.EqualTo(startingCafeBalance + 300));
+            Assert.That(runtime.State.MoneyAccountsById[new WorldEntityId("account_rowan_cash")].BalanceCents, Is.EqualTo(startingActorBalance + 125));
+            Assert.That(runtime.State.Transactions.Count, Is.EqualTo(2));
+            Assert.That(runtime.State.GetHistoryByKind(HistoryEventKind.PaymentRecorded).Count, Is.EqualTo(2));
             Assert.That(runtime.State.GetHistoryByKind(HistoryEventKind.WorldActionPerformed).Count, Is.EqualTo(1));
         }
 
@@ -107,6 +137,7 @@ namespace Legacy.Tests.EditMode
         public void DoWorldAction_UnauthorizedRoleFailsWithoutHistory()
         {
             var runtime = new WorldRuntime(WorldFactory.CreateVeyneSeedWorld());
+            int startingCafeBalance = runtime.State.MoneyAccountsById[new WorldEntityId("account_linden_cafe")].BalanceCents;
 
             WorldCommandResult result = runtime.Execute(new DoWorldActionCommand(
                 new WorldEntityId("citizen_noaharan"),
@@ -115,7 +146,33 @@ namespace Legacy.Tests.EditMode
 
             Assert.That(result.Succeeded, Is.False);
             Assert.That(result.Message, Does.Contain("not authorized"));
+            Assert.That(runtime.State.MoneyAccountsById[new WorldEntityId("account_linden_cafe")].BalanceCents, Is.EqualTo(startingCafeBalance));
+            Assert.That(runtime.State.Transactions.Count, Is.EqualTo(0));
+            Assert.That(runtime.State.GetHistoryByKind(HistoryEventKind.PaymentRecorded).Count, Is.EqualTo(0));
             Assert.That(runtime.State.GetHistoryByKind(HistoryEventKind.WorldActionPerformed).Count, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void EconomyTransfer_RejectsInsufficientFunds()
+        {
+            WorldState state = WorldFactory.CreateVeyneSeedWorld();
+            var economy = new EconomySystem(state);
+            int startingHollandBalance = state.MoneyAccountsById[new WorldEntityId("account_holland_cash")].BalanceCents;
+            int startingCafeBalance = state.MoneyAccountsById[new WorldEntityId("account_linden_cafe")].BalanceCents;
+
+            EconomyTransferResult result = economy.Transfer(
+                new WorldEntityId("account_holland_cash"),
+                new WorldEntityId("account_linden_cafe"),
+                startingHollandBalance + 1,
+                "Impossible purchase",
+                new WorldEntityId("place_linden_cafe_interior"),
+                WorldActionKind.ServeCustomer,
+                state.CurrentTime);
+
+            Assert.That(result.Succeeded, Is.False);
+            Assert.That(state.MoneyAccountsById[new WorldEntityId("account_holland_cash")].BalanceCents, Is.EqualTo(startingHollandBalance));
+            Assert.That(state.MoneyAccountsById[new WorldEntityId("account_linden_cafe")].BalanceCents, Is.EqualTo(startingCafeBalance));
+            Assert.That(state.Transactions.Count, Is.EqualTo(0));
         }
 
         [Test]

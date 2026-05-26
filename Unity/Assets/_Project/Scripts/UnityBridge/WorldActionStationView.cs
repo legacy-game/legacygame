@@ -43,18 +43,14 @@ namespace Legacy.UnityBridge
 
         public void Interact()
         {
-            if (WorldBootstrap.Runtime == null) {
+            if (WorldBootstrap.Runtime == null || _infoPanel == null) {
                 return;
             }
 
-            WorldCommandResult result = WorldBootstrap.Runtime.Execute(new DoWorldActionCommand(
+            _infoPanel.ShowJobMiniGame(
                 new WorldEntityId(_actorCitizenId),
                 _action,
-                new WorldEntityId(_targetPlaceId)));
-
-            if (_infoPanel != null) {
-                _infoPanel.Show(result.Message);
-            }
+                new WorldEntityId(_targetPlaceId));
         }
     }
 }

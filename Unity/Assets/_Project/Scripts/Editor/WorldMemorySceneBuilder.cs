@@ -147,7 +147,7 @@ namespace Legacy.Editor
                 CreateRegistryStation(infoPanel);
                 CreateDoor(
                     "CafeDoor",
-                    new Vector3(-2.4f, -0.1f, -0.55f),
+                    new Vector3(-1.3f, -0.1f, -0.55f),
                     new Vector3(1.25f, 0.6f, 1f),
                     new Color(0.68f, 0.46f, 0.24f),
                     WorldSceneIds.CafeInteriorSceneId,
@@ -157,7 +157,7 @@ namespace Legacy.Editor
                     infoPanel);
                 CreateDoor(
                     "PharmacyDoor",
-                    new Vector3(2.4f, -0.1f, -0.55f),
+                    new Vector3(2.3f, -0.1f, -0.55f),
                     new Vector3(1.25f, 0.6f, 1f),
                     new Color(0.36f, 0.58f, 0.46f),
                     WorldSceneIds.PharmacyInteriorSceneId,
@@ -193,6 +193,7 @@ namespace Legacy.Editor
             station.Configure(infoPanel);
             InteractableView interactable = registry.AddComponent<InteractableView>();
             interactable.Configure(station.GetPrompt, station.Interact, 75, 1.8f);
+            CreateWorldLabel(registry.transform, "Register", new Vector3(0f, -0.7f, -0.05f));
         }
 
         private static void CreateDoor(
@@ -214,6 +215,7 @@ namespace Legacy.Editor
             doorTrigger.Configure(targetWorldSceneId, targetUnitySceneName, targetUnityScenePath, prompt, infoPanel);
             InteractableView interactable = door.AddComponent<InteractableView>();
             interactable.Configure(doorTrigger.GetPrompt, doorTrigger.Interact, 100, 2.2f);
+            CreateWorldLabel(door.transform, name.Replace("Door", ""), new Vector3(0f, -0.55f, -0.05f));
         }
 
         private static void CreateExteriorEnvironment()
@@ -222,8 +224,9 @@ namespace Legacy.Editor
             CreateQuad("LindenRoad", new Vector3(0f, -1.1f, 0.65f), new Vector3(18f, 2.1f, 1f), StreetAsphalt);
             CreateQuad("NorthSidewalk", new Vector3(0f, 0.25f, 0.6f), new Vector3(18f, 0.45f, 1f), Sidewalk);
             CreateQuad("SouthSidewalk", new Vector3(0f, -2.45f, 0.6f), new Vector3(18f, 0.45f, 1f), Sidewalk);
-            CreateQuad("CafeLot", new Vector3(-2.4f, 0.85f, 0.55f), new Vector3(2.7f, 2.35f, 1f), new Color(0.21f, 0.18f, 0.15f));
-            CreateQuad("PharmacyLot", new Vector3(2.4f, 0.85f, 0.55f), new Vector3(2.7f, 2.35f, 1f), new Color(0.17f, 0.20f, 0.18f));
+            CreateQuad("BookshopLot", new Vector3(-4.6f, 0.85f, 0.55f), new Vector3(2.4f, 2.35f, 1f), new Color(0.18f, 0.16f, 0.21f));
+            CreateQuad("CafeLot", new Vector3(-1.3f, 0.85f, 0.55f), new Vector3(2.7f, 2.35f, 1f), new Color(0.21f, 0.18f, 0.15f));
+            CreateQuad("PharmacyLot", new Vector3(2.3f, 0.85f, 0.55f), new Vector3(2.7f, 2.35f, 1f), new Color(0.17f, 0.20f, 0.18f));
             CreateStreetMarker(-7.2f);
             CreateStreetMarker(-4.8f);
             CreateStreetMarker(-2.4f);
@@ -245,6 +248,7 @@ namespace Legacy.Editor
             station.Configure("citizen_noaharan", action, targetPlaceId, prompt, infoPanel);
             InteractableView interactable = counter.AddComponent<InteractableView>();
             interactable.Configure(station.GetPrompt, station.Interact, 125, 2.0f);
+            CreateWorldLabel(counter.transform, prompt.Replace("E: ", ""), new Vector3(0f, -0.65f, -0.05f));
             CreateQuad("ShelfLeft", new Vector3(-3.7f, 0.75f, 0.45f), new Vector3(0.65f, 2.1f, 1f), accent * 0.75f);
             CreateQuad("ShelfRight", new Vector3(3.7f, 0.75f, 0.45f), new Vector3(0.65f, 2.1f, 1f), accent * 0.75f);
             CreateQuad("WarmLight", new Vector3(0f, 1.65f, 0.35f), new Vector3(1.2f, 0.28f, 1f), WarmLight);
@@ -280,6 +284,23 @@ namespace Legacy.Editor
             Renderer renderer = quad.GetComponent<Renderer>();
             renderer.material = CreateFlatMaterial(color);
             return quad;
+        }
+
+        private static TextMesh CreateWorldLabel(Transform parent, string text, Vector3 localPosition)
+        {
+            var labelObject = new GameObject($"{parent.name}Label");
+            labelObject.transform.SetParent(parent);
+            labelObject.transform.localPosition = localPosition;
+            labelObject.transform.localScale = Vector3.one * 0.22f;
+
+            TextMesh label = labelObject.AddComponent<TextMesh>();
+            label.text = text;
+            label.anchor = TextAnchor.MiddleCenter;
+            label.alignment = TextAlignment.Center;
+            label.characterSize = 0.28f;
+            label.fontSize = 18;
+            label.color = Color.white;
+            return label;
         }
 
         private static Material CreateFlatMaterial(Color color)

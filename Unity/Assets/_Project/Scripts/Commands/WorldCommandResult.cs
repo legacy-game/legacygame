@@ -10,7 +10,7 @@ namespace Legacy.Commands
         private readonly List<HistoryEvent> _historyEvents = new();
 
         public bool Succeeded { get; }
-        public string Message { get; }
+        public string Message { get; private set; }
         public IReadOnlyList<WorldEntityId> ChangedEntityIds => _changedEntityIds;
         public IReadOnlyList<HistoryEvent> HistoryEvents => _historyEvents;
 
@@ -39,6 +39,12 @@ namespace Legacy.Commands
         public WorldCommandResult WithHistoryEvent(HistoryEvent historyEvent)
         {
             _historyEvents.Add(historyEvent);
+            return this;
+        }
+
+        public WorldCommandResult WithMessage(string message)
+        {
+            Message = message;
             return this;
         }
     }

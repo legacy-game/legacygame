@@ -147,7 +147,8 @@ TextureImporter:
     secondaryTextures: []
     spriteCustomMetadata:
       entries: []
-    nameFileIdTable: {}
+    nameFileIdTable:
+      bg_pharmacy_interior_0: 3437297521270240061
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

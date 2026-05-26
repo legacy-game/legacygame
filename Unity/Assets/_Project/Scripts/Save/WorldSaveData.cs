@@ -18,6 +18,17 @@ namespace Legacy.Save
         public List<CitizenRegistrationSaveData> citizenRegistrations = new();
         public List<CitizenGoalSaveData> citizenGoals = new();
         public List<RoleAssignmentSaveData> roleAssignments = new();
+        public List<JobPostingSaveData> jobPostings = new();
+        public List<JobApplicationSaveData> jobApplications = new();
+        public List<EmploymentContractSaveData> employmentContracts = new();
+        public List<WorkplaceSaveData> workplaces = new();
+        public List<ShiftSaveData> shifts = new();
+        public List<JobTaskSaveData> jobTasks = new();
+        public List<WorkplaceInventorySaveData> workplaceInventories = new();
+        public List<SkillSaveData> skills = new();
+        public List<PerformanceRecordSaveData> performanceRecords = new();
+        public List<MoneyAccountSaveData> moneyAccounts = new();
+        public List<TransactionSaveData> transactions = new();
         public List<PlotSaveData> plots = new();
         public List<BuildingSaveData> buildings = new();
         public List<HistoryEventSaveData> recentHistory = new();
