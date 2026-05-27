@@ -10,6 +10,7 @@ namespace Legacy.Save
         public long worldSeed;
         public DateTimeSaveData currentTime;
         public string currentSceneId;
+        public MorningSaveData morning;
         public List<RegionSaveData> regions = new();
         public List<WorldSceneSaveData> scenes = new();
         public List<PlaceSaveData> places = new();
@@ -23,7 +24,9 @@ namespace Legacy.Save
         public List<EmploymentContractSaveData> employmentContracts = new();
         public List<WorkplaceSaveData> workplaces = new();
         public List<ShiftSaveData> shifts = new();
+        public List<ShiftSummarySaveData> shiftSummaries = new();
         public List<JobTaskSaveData> jobTasks = new();
+        public List<VisitSaveData> visits = new();
         public List<WorkplaceInventorySaveData> workplaceInventories = new();
         public List<SkillSaveData> skills = new();
         public List<PerformanceRecordSaveData> performanceRecords = new();

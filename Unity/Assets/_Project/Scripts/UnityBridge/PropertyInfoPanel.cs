@@ -9,7 +9,13 @@ namespace Legacy.UnityBridge
 {
     public sealed class PropertyInfoPanel : MonoBehaviour
     {
+        private static readonly WorldEntityId PlayerId = new("citizen_noaharan");
+        private static readonly WorldEntityId CafeWorkplaceId = new("workplace_linden_cafe");
+        private static readonly WorldEntityId PharmacyWorkplaceId = new("workplace_pell_pharmacy");
+
         private string _message = "WASD to move. E at doors. F1 debug.";
+        private string _lastTaskSummary = "No task completed yet.";
+        private string _lastShiftSummary = "No shift ended yet.";
         private PanelMode _mode = PanelMode.Overview;
         private WorldActionKind _activeMiniGameAction;
         private WorldEntityId _activeMiniGameActorId;
@@ -38,21 +44,25 @@ namespace Legacy.UnityBridge
             _activeMiniGamePlaceId = targetPlaceId;
             _mode = PanelMode.MiniGame;
 
-            _message = TryPrepareActiveTask(actorId, action, targetPlaceId, out _activeTaskId)
-                ? "Job task ready. Complete the placeholder mini-game in the UI."
-                : "You need a contract and active shift from the Jobs UI first.";
+            if (TryPrepareActiveTask(actorId, action, targetPlaceId, out _activeTaskId)) {
+                _message = "OK: job task ready. Complete the placeholder mini-game in the UI.";
+            } else {
+                _mode = PanelMode.Overview;
+            }
         }
 
         private void OnGUI()
         {
-            GUILayout.BeginArea(new Rect(16, 16, 470, 420), GUI.skin.box);
-            GUILayout.Label("legacy smoke");
+            GUILayout.BeginArea(new Rect(16, 16, 560, 640), GUI.skin.box);
+            GUILayout.Label("legacy smoke - playable slice");
             GUILayout.Space(4);
+            DrawHud();
+            GUILayout.Space(6);
             GUILayout.Label($"Objective: {GetObjectiveText()}");
             GUILayout.Space(4);
             DrawNavigation();
             GUILayout.Space(4);
-            GUILayout.Label(_message);
+            GUILayout.Label($"Message: {_message}");
             GUILayout.Space(8);
             DrawCurrentPanel();
             GUILayout.Space(8);
@@ -94,6 +104,10 @@ namespace Legacy.UnityBridge
                 LoadWorldAsync();
             }
 
+            if (GUILayout.Button("End Morning")) {
+                ExecuteAndShow(new EndMorningCommand(new WorldEntityId("citizen_noaharan")));
+            }
+
             GUILayout.EndHorizontal();
         }
 
@@ -118,6 +132,32 @@ namespace Legacy.UnityBridge
             }
         }
 
+        private void DrawHud()
+        {
+            if (WorldBootstrap.Runtime == null) {
+                GUILayout.Label("HUD: world not loaded.");
+                return;
+            }
+
+            WorldState state = WorldBootstrap.Runtime.State;
+            GUILayout.BeginVertical(GUI.skin.box);
+            GUILayout.Label($"Time: {state.CurrentTime.Time} on {state.CurrentTime.Date}");
+            GUILayout.Label($"Location: {GetPlayerLocationText(state)}");
+            if (TryFindActivePlayerShift(state, out ShiftState shift)) {
+                GUILayout.Label($"Current shift: {GetWorkplaceName(state, shift.WorkplaceId)} | until {shift.ExpectedEndAt.Time} | earned {EconomySystem.FormatMoney(shift.EarnedCents)} | tasks {shift.CompletedTaskIds.Count}");
+            } else {
+                GUILayout.Label("Current shift: none - open Jobs to accept work and start a shift.");
+            }
+
+            if (TryFindActivePlayerTask(state, out JobTaskState task)) {
+                GUILayout.Label($"Current task: {GetTaskName(task)} | {task.Status} | quality {task.Quality}");
+            } else {
+                GUILayout.Label("Current task: none - use a workplace counter while on shift.");
+            }
+
+            GUILayout.EndVertical();
+        }
+
         private string GetObjectiveText()
         {
             if (WorldBootstrap.Runtime == null) {
@@ -125,17 +165,16 @@ namespace Legacy.UnityBridge
             }
 
             WorldState state = WorldBootstrap.Runtime.State;
-            var playerId = new WorldEntityId("citizen_noaharan");
-            if (!state.TryGetCitizenRegistration(playerId, out CitizenRegistrationState _)) {
+            if (!state.TryGetCitizenRegistration(PlayerId, out CitizenRegistrationState _)) {
                 return "Find the blue civic desk and register.";
             }
 
-            if (state.GetHistoryByKind(HistoryEventKind.WorldActionPerformed).Count == 0) {
+            if (!TryFindActivePlayerShift(state, out ShiftState _)) {
                 return "Open Jobs, accept a shift, then use a workplace counter.";
             }
 
             if (state.Transactions.Count == 0) {
-                return "Use the counter, complete the UI mini-game, and move money.";
+                return "Wait for Holland or Sasha, use the matching counter, and finish the queued task.";
             }
 
             if (state.GetHistoryByKind(HistoryEventKind.BuildingOwnershipTransferred).Count == 0) {
@@ -147,11 +186,117 @@ namespace Legacy.UnityBridge
 
         private void DrawOverviewPanel()
         {
+            DrawShiftSummary();
+            GUILayout.Space(6);
+            DrawTaskSummary();
+            GUILayout.Space(6);
             DrawMoneySummary();
+            GUILayout.Space(6);
+            DrawMorningSummary();
+            GUILayout.Space(6);
+            DrawVisits();
+            GUILayout.Space(6);
+            DrawQueuedTasks();
+            GUILayout.Space(6);
+            DrawInventorySummary();
             GUILayout.Space(6);
             DrawRecentTransactions();
             GUILayout.Space(6);
             DrawRecentHistory(3);
+        }
+
+        private void DrawMorningSummary()
+        {
+            if (WorldBootstrap.Runtime?.State.Morning == null) {
+                return;
+            }
+
+            MorningState morning = WorldBootstrap.Runtime.State.Morning;
+            GUILayout.Label($"Morning: {morning.Status} | Tasks {morning.TasksCompleted} | Earned {EconomySystem.FormatMoney(morning.MoneyEarnedCents)}");
+        }
+
+        private void DrawVisits()
+        {
+            if (WorldBootstrap.Runtime == null) {
+                return;
+            }
+
+            GUILayout.Label("Visits:");
+            int shown = 0;
+            foreach (VisitState visit in WorldBootstrap.Runtime.State.VisitsById.Values) {
+                string visitor = WorldBootstrap.Runtime.State.TryGetCitizen(visit.VisitorCitizenId, out CitizenState citizen)
+                    ? citizen.DisplayName
+                    : visit.VisitorCitizenId.ToString();
+                GUILayout.Label($"- {visitor}: {visit.Status} ({visit.Intent})");
+                shown++;
+                if (shown >= 3) {
+                    break;
+                }
+            }
+
+            if (shown == 0) {
+                GUILayout.Label("- none yet; wait for visitors");
+            }
+        }
+
+        private void DrawQueuedTasks()
+        {
+            if (WorldBootstrap.Runtime == null) {
+                return;
+            }
+
+            GUILayout.Label("Queued Tasks:");
+            int shown = 0;
+            foreach (JobTaskState task in WorldBootstrap.Runtime.State.JobTasksById.Values) {
+                if (task.Status != JobTaskStatus.Queued && task.Status != JobTaskStatus.Active) {
+                    continue;
+                }
+
+                string name = JobTaskCatalog.TryGet(task.DefinitionId, out JobTaskDefinition definition)
+                    ? definition.DisplayName
+                    : task.DefinitionId;
+                GUILayout.Label($"- {name}: {task.Status}");
+                shown++;
+                if (shown >= 3) {
+                    break;
+                }
+            }
+
+            if (shown == 0) {
+                GUILayout.Label("- none waiting");
+            }
+        }
+
+        private void DrawInventorySummary()
+        {
+            if (WorldBootstrap.Runtime == null) {
+                return;
+            }
+
+            GUILayout.Label("Inventory:");
+            DrawInventory(WorldBootstrap.Runtime.State, new WorldEntityId("workplace_linden_cafe"), "Cafe");
+            DrawInventory(WorldBootstrap.Runtime.State, new WorldEntityId("workplace_pell_pharmacy"), "Pharmacy");
+        }
+
+        private void DrawInventory(WorldState state, WorldEntityId workplaceId, string label)
+        {
+            if (!state.TryGetWorkplaceInventory(workplaceId, out WorkplaceInventoryState inventory)) {
+                GUILayout.Label($"- {label}: missing inventory");
+                return;
+            }
+
+            string summary = string.Empty;
+            foreach (InventoryStackState stack in inventory.Stacks) {
+                if (!string.IsNullOrEmpty(summary)) {
+                    summary += ", ";
+                }
+
+                summary += $"{stack.ItemId} x{stack.Count}";
+            }
+
+            GUILayout.Label(string.IsNullOrEmpty(summary)
+                ? $"- {label}: empty"
+                : $"- {label}: {summary}");
         }
 
         private void DrawMoneySummary()
@@ -222,7 +367,7 @@ namespace Legacy.UnityBridge
                 new WorldEntityId("application_noah_cafe_ui"),
                 new WorldEntityId("contract_noah_cafe_ui"),
                 new WorldEntityId("shift_noah_cafe_ui"),
-                new WorldEntityId("workplace_linden_cafe"));
+                CafeWorkplaceId);
             DrawJobOffer(
                 state,
                 "Pell Pharmacy shelf work",
@@ -231,7 +376,7 @@ namespace Legacy.UnityBridge
                 new WorldEntityId("application_noah_pharmacy_ui"),
                 new WorldEntityId("contract_noah_pharmacy_ui"),
                 new WorldEntityId("shift_noah_pharmacy_ui"),
-                new WorldEntityId("workplace_pell_pharmacy"));
+                PharmacyWorkplaceId);
         }
 
         private void DrawJobOffer(
@@ -244,7 +389,6 @@ namespace Legacy.UnityBridge
             WorldEntityId shiftId,
             WorldEntityId workplaceId)
         {
-            var playerId = new WorldEntityId("citizen_noaharan");
             if (!state.TryGetWorkplace(workplaceId, out WorkplaceState workplace)) {
                 return;
             }
@@ -254,21 +398,26 @@ namespace Legacy.UnityBridge
                 : workplace.PlaceId.ToString();
             bool hasContract = false;
             if (state.TryGetJobPosting(postingId, out JobPostingState posting)) {
-                hasContract = state.TryGetActiveContract(playerId, workplaceId, posting.RoleId, out EmploymentContractState _);
+                hasContract = state.TryGetActiveContract(PlayerId, workplaceId, posting.RoleId, out EmploymentContractState _);
             }
 
-            bool hasShift = state.TryGetActiveShift(playerId, workplaceId, out ShiftState _);
+            bool hasShift = state.TryGetActiveShift(PlayerId, workplaceId, out ShiftState activeShift);
 
             GUILayout.BeginVertical(GUI.skin.box);
             GUILayout.Label($"{title} - {placeName}");
             GUILayout.Label(description);
             GUILayout.Label(hasContract ? hasShift ? "Status: on shift" : "Status: hired" : "Status: available");
             if (!hasContract && GUILayout.Button($"Apply and accept {title}")) {
-                ExecuteAndShow(new ApplyForJobCommand(applicationId, postingId, playerId));
+                ExecuteAndShow(new ApplyForJobCommand(applicationId, postingId, PlayerId));
                 ExecuteAndShow(new OfferJobCommand(applicationId, workplace.OwnerCitizenId));
-                ExecuteAndShow(new AcceptJobOfferCommand(contractId, applicationId, playerId));
+                ExecuteAndShow(new AcceptJobOfferCommand(contractId, applicationId, PlayerId));
             } else if (hasContract && !hasShift && GUILayout.Button($"Start {title}")) {
-                ExecuteAndShow(new StartShiftCommand(shiftId, contractId, 120));
+                ExecuteAndShow(new StartShiftCommand(CreateShiftId(state, shiftId), contractId, 120));
+            } else if (hasShift && GUILayout.Button($"End {title}")) {
+                WorldCommandResult result = ExecuteAndShow(new EndShiftCommand(activeShift.Id, PlayerId));
+                if (result.Succeeded) {
+                    _lastShiftSummary = BuildShiftSummary(activeShift);
+                }
             }
 
             GUILayout.EndVertical();
@@ -277,6 +426,27 @@ namespace Legacy.UnityBridge
         private void DrawHistoryPanel()
         {
             DrawRecentHistory(8);
+            GUILayout.Space(6);
+            DrawShiftSummaries();
+        }
+
+        private void DrawShiftSummaries()
+        {
+            if (WorldBootstrap.Runtime == null) {
+                return;
+            }
+
+            GUILayout.Label("Shift Summaries:");
+            int start = Mathf.Max(0, WorldBootstrap.Runtime.State.ShiftSummaries.Count - 3);
+            if (WorldBootstrap.Runtime.State.ShiftSummaries.Count == 0) {
+                GUILayout.Label("- none yet");
+                return;
+            }
+
+            for (int i = start; i < WorldBootstrap.Runtime.State.ShiftSummaries.Count; i++) {
+                ShiftSummaryState summary = WorldBootstrap.Runtime.State.ShiftSummaries[i];
+                GUILayout.Label($"- {summary.TasksCompleted} tasks, {EconomySystem.FormatMoney(summary.EarnedCents)} earned");
+            }
         }
 
         private void DrawPropertyPanel()
@@ -355,9 +525,15 @@ namespace Legacy.UnityBridge
             }
 
             if (GUILayout.Button("Complete Task")) {
-                ExecuteAndShow(new SubmitMiniGameResultCommand(_activeTaskId, _activeMiniGameActorId, 85, 100, 45, 1));
-                ExecuteAndShow(new CompleteJobTaskCommand(_activeTaskId, _activeMiniGameActorId));
-                _mode = PanelMode.Overview;
+                WorldCommandResult submit = ExecuteAndShow(new SubmitMiniGameResultCommand(_activeTaskId, _activeMiniGameActorId, 85, 100, 45, 1));
+                if (submit.Succeeded) {
+                    WorldCommandResult complete = ExecuteAndShow(new CompleteJobTaskCommand(_activeTaskId, _activeMiniGameActorId));
+                    if (complete.Succeeded && state.TryGetJobTask(_activeTaskId, out JobTaskState completedTask)) {
+                        _lastTaskSummary = BuildTaskSummary(completedTask);
+                    }
+
+                    _mode = PanelMode.Overview;
+                }
             }
 
             GUILayout.EndHorizontal();
@@ -367,21 +543,27 @@ namespace Legacy.UnityBridge
         {
             taskId = default;
             if (WorldBootstrap.Runtime == null ||
-                !WorldBootstrap.Runtime.State.TryGetWorkplaceByPlace(targetPlaceId, out WorkplaceState workplace) ||
-                !WorldBootstrap.Runtime.State.TryGetActiveShift(actorId, workplace.Id, out ShiftState shift)) {
+                !WorldBootstrap.Runtime.State.TryGetWorkplaceByPlace(targetPlaceId, out WorkplaceState workplace)) {
+                Show("No workplace is attached to this counter.");
                 return false;
             }
 
-            string definitionId = action == WorldActionKind.ServeCustomer
-                ? JobTaskCatalog.ServeCafeCustomer
-                : JobTaskCatalog.StockPharmacyShelves;
-            taskId = new WorldEntityId($"task_ui_{definitionId}_{WorldBootstrap.Runtime.State.JobTasksById.Count + 1:000}");
-            WorldCommandResult create = WorldBootstrap.Runtime.Execute(new CreateJobTaskCommand(taskId, definitionId, workplace.Id));
-            if (!create.Succeeded) {
-                Show(create.Message);
+            if (!WorldBootstrap.Runtime.State.TryGetActiveShift(actorId, workplace.Id, out ShiftState shift)) {
+                Show("Start a shift before working this counter.");
                 return false;
             }
 
+            if (!WorldBootstrap.Runtime.State.TryGetNextQueuedTask(workplace.Id, action, out JobTaskState queuedTask)) {
+                Show("No queued work is waiting here. Wait for a customer or delivery.");
+                return false;
+            }
+
+            if (!CanCompleteTaskNow(workplace, queuedTask, out string blocker)) {
+                Show(blocker);
+                return false;
+            }
+
+            taskId = queuedTask.Id;
             WorldCommandResult start = WorldBootstrap.Runtime.Execute(new StartJobTaskCommand(taskId, shift.Id, actorId));
             if (!start.Succeeded) {
                 Show(start.Message);
@@ -391,14 +573,152 @@ namespace Legacy.UnityBridge
             return true;
         }
 
-        private void ExecuteAndShow(IWorldCommand command)
+        private bool CanCompleteTaskNow(WorkplaceState workplace, JobTaskState task, out string blocker)
+        {
+            blocker = string.Empty;
+            WorldState state = WorldBootstrap.Runtime.State;
+            if (!JobTaskCatalog.TryGet(task.DefinitionId, out JobTaskDefinition definition)) {
+                blocker = $"Task definition not found: {task.DefinitionId}";
+                return false;
+            }
+
+            if (!state.TryGetWorkplaceInventory(workplace.Id, out WorkplaceInventoryState inventory)) {
+                blocker = "Workplace inventory not found.";
+                return false;
+            }
+
+            if (!string.IsNullOrEmpty(definition.InputItemId) && inventory.CountOf(definition.InputItemId) < definition.InputItemCount) {
+                blocker = $"Missing inventory: needs {definition.InputItemCount} {definition.InputItemId}.";
+                return false;
+            }
+
+            if (!state.TryGetMoneyAccount(workplace.BusinessAccountId, out MoneyAccountState businessAccount)) {
+                blocker = "Business account not found.";
+                return false;
+            }
+
+            if (businessAccount.BalanceCents < definition.BasePayCents) {
+                blocker = $"Business cannot pay {EconomySystem.FormatMoney(definition.BasePayCents)} for this task.";
+                return false;
+            }
+
+            blocker = string.Empty;
+            return true;
+        }
+
+        private WorldCommandResult ExecuteAndShow(IWorldCommand command)
         {
             if (WorldBootstrap.Runtime == null) {
-                return;
+                WorldCommandResult failure = WorldCommandResult.Failure("World runtime is not loaded.");
+                Show(FormatCommandMessage(failure));
+                return failure;
             }
 
             WorldCommandResult result = WorldBootstrap.Runtime.Execute(command);
-            Show(result.Message);
+            Show(FormatCommandMessage(result));
+            return result;
+        }
+
+        private static string FormatCommandMessage(WorldCommandResult result)
+        {
+            string message = string.IsNullOrWhiteSpace(result.Message) ? "No details returned." : result.Message;
+            return result.Succeeded ? $"OK: {message}" : $"Can't do that yet: {message}";
+        }
+
+        private static string GetPlayerLocationText(WorldState state)
+        {
+            if (!state.TryGetCitizen(PlayerId, out CitizenState player)) {
+                return "unknown player";
+            }
+
+            string placeName = state.TryGetPlace(player.CurrentPlaceId, out PlaceState place)
+                ? place.DisplayName
+                : player.CurrentPlaceId.ToString();
+            string sceneName = state.TryGetScene(player.CurrentSceneId, out WorldSceneState scene)
+                ? scene.DisplayName
+                : player.CurrentSceneId.ToString();
+            return $"{placeName} in {sceneName}";
+        }
+
+        private static bool TryFindActivePlayerShift(WorldState state, out ShiftState shift)
+        {
+            foreach (ShiftState candidate in state.ShiftsById.Values) {
+                if (candidate.WorkerCitizenId == PlayerId && candidate.Status == ShiftStatus.Active) {
+                    shift = candidate;
+                    return true;
+                }
+            }
+
+            shift = null;
+            return false;
+        }
+
+        private static bool TryFindActivePlayerTask(WorldState state, out JobTaskState task)
+        {
+            foreach (JobTaskState candidate in state.JobTasksById.Values) {
+                if (candidate.AssignedWorkerId == PlayerId &&
+                    (candidate.Status == JobTaskStatus.Active || candidate.Status == JobTaskStatus.ResultSubmitted)) {
+                    task = candidate;
+                    return true;
+                }
+            }
+
+            task = null;
+            return false;
+        }
+
+        private static string GetTaskName(JobTaskState task)
+        {
+            return JobTaskCatalog.TryGet(task.DefinitionId, out JobTaskDefinition definition)
+                ? definition.DisplayName
+                : task.DefinitionId;
+        }
+
+        private static string GetWorkplaceName(WorldState state, WorldEntityId workplaceId)
+        {
+            if (!state.TryGetWorkplace(workplaceId, out WorkplaceState workplace)) {
+                return workplaceId.ToString();
+            }
+
+            return state.TryGetPlace(workplace.PlaceId, out PlaceState place)
+                ? place.DisplayName
+                : workplace.Id.ToString();
+        }
+
+        private static string BuildTaskSummary(JobTaskState task)
+        {
+            string result = task.MiniGameResult == null
+                ? "no mini-game result"
+                : $"{task.MiniGameResult.Score}/{task.MiniGameResult.MaxScore}, {task.MiniGameResult.Mistakes} mistake(s), {task.MiniGameResult.DurationSeconds}s";
+            return $"{GetTaskName(task)} finished at {task.CompletedAt.Time}. Quality {task.Quality}. Result: {result}.";
+        }
+
+        private static string BuildShiftSummary(ShiftState shift)
+        {
+            return $"Shift ended at {shift.EndedAt.Time}. Earned {EconomySystem.FormatMoney(shift.EarnedCents)} across {shift.CompletedTaskIds.Count} task(s).";
+        }
+
+        private static WorldEntityId CreateShiftId(WorldState state, WorldEntityId preferredId)
+        {
+            return state.TryGetShift(preferredId, out ShiftState _)
+                ? new WorldEntityId($"{preferredId.Value}_{state.ShiftsById.Count + 1:000}")
+                : preferredId;
+        }
+
+        private void DrawTaskSummary()
+        {
+            GUILayout.BeginVertical(GUI.skin.box);
+            GUILayout.Label("Last Task Result:");
+            GUILayout.Label(_lastTaskSummary);
+            GUILayout.EndVertical();
+        }
+
+        private void DrawShiftSummary()
+        {
+            GUILayout.BeginVertical(GUI.skin.box);
+            GUILayout.Label("Last Shift Summary:");
+            GUILayout.Label(_lastShiftSummary);
+            GUILayout.EndVertical();
         }
 
         private async void SaveWorldAsync()

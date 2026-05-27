@@ -141,23 +141,24 @@ namespace Legacy.Tests.EditMode
         }
 
         [Test]
-        public void SaveRoundTrip_PreservesMoneyTransactionsAndPaidWorkHistory()
+        public void SaveRoundTrip_PreservesMoneyTransactionsAndTaskHistory()
         {
             var runtime = new WorldRuntime(WorldFactory.CreateVeyneSeedWorld());
+            var workerId = new WorldEntityId("citizen_noaharan");
+            var applicationId = new WorldEntityId("application_noah_cafe_save");
+            var contractId = new WorldEntityId("contract_noah_cafe_save");
+            var shiftId = new WorldEntityId("shift_noah_cafe_save");
+            var taskId = new WorldEntityId("task_noah_cafe_save");
+            var workplaceId = new WorldEntityId("workplace_linden_cafe");
 
-            runtime.Execute(new DoWorldActionCommand(
-                new WorldEntityId("citizen_rowan"),
-                WorldActionKind.ServeCustomer,
-                new WorldEntityId("place_linden_cafe_interior")));
-            runtime.Execute(new AcceptJobCommand(
-                new WorldEntityId("roleassign_noah_pharmacy_clerk"),
-                new WorldEntityId("citizen_noaharan"),
-                RoleCatalog.Shopkeeper,
-                new WorldEntityId("place_pell_pharmacy_interior")));
-            runtime.Execute(new DoWorldActionCommand(
-                new WorldEntityId("citizen_noaharan"),
-                WorldActionKind.StockShelves,
-                new WorldEntityId("place_pell_pharmacy_interior")));
+            runtime.Execute(new ApplyForJobCommand(applicationId, new WorldEntityId("posting_cafe_worker_001"), workerId));
+            runtime.Execute(new OfferJobCommand(applicationId, new WorldEntityId("citizen_noaharan")));
+            runtime.Execute(new AcceptJobOfferCommand(contractId, applicationId, workerId));
+            runtime.Execute(new StartShiftCommand(shiftId, contractId, 120));
+            runtime.Execute(new CreateJobTaskCommand(taskId, JobTaskCatalog.ServeCafeCustomer, workplaceId));
+            runtime.Execute(new StartJobTaskCommand(taskId, shiftId, workerId));
+            runtime.Execute(new SubmitMiniGameResultCommand(taskId, workerId, 80, 100, 50, 2));
+            runtime.Execute(new CompleteJobTaskCommand(taskId, workerId));
 
             WorldSaveData saveData = WorldSaveMapper.ToSaveData(runtime.State);
             WorldState loaded = WorldSaveMapper.ToRuntime(saveData);
@@ -165,10 +166,10 @@ namespace Legacy.Tests.EditMode
             Assert.That(loaded.MoneyAccountsById[new WorldEntityId("account_linden_cafe")].BalanceCents, Is.EqualTo(runtime.State.MoneyAccountsById[new WorldEntityId("account_linden_cafe")].BalanceCents));
             Assert.That(loaded.MoneyAccountsById[new WorldEntityId("account_pell_pharmacy")].BalanceCents, Is.EqualTo(runtime.State.MoneyAccountsById[new WorldEntityId("account_pell_pharmacy")].BalanceCents));
             Assert.That(loaded.MoneyAccountsById[new WorldEntityId("account_noaharan_cash")].BalanceCents, Is.EqualTo(runtime.State.MoneyAccountsById[new WorldEntityId("account_noaharan_cash")].BalanceCents));
-            Assert.That(loaded.Transactions.Count, Is.EqualTo(3));
-            Assert.That(loaded.GetHistoryByKind(Legacy.History.HistoryEventKind.PaymentRecorded).Count, Is.EqualTo(3));
-            Assert.That(loaded.GetHistoryByKind(Legacy.History.HistoryEventKind.JobActionPerformed).Count, Is.EqualTo(2));
-            Assert.That(loaded.GetHistoryByKind(Legacy.History.HistoryEventKind.JobAccepted).Count, Is.EqualTo(1));
+            Assert.That(loaded.Transactions.Count, Is.EqualTo(1));
+            Assert.That(loaded.GetHistoryByKind(Legacy.History.HistoryEventKind.PaymentRecorded).Count, Is.EqualTo(1));
+            Assert.That(loaded.GetHistoryByKind(Legacy.History.HistoryEventKind.JobTaskCompleted).Count, Is.EqualTo(1));
+            Assert.That(loaded.GetHistoryByKind(Legacy.History.HistoryEventKind.EmploymentContractSigned).Count, Is.EqualTo(1));
         }
 
         [Test]

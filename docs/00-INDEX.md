@@ -106,6 +106,9 @@ This is a multi-file document. Start with the executive summary, then read the p
 ### Section 15 — Glossary
 - [15-glossary.md](15-glossary.md)
 
+### Section 17 — Authoring
+- [17-authoring-notes.md](17-authoring-notes.md)
+
 ---
 
 ## Document conventions

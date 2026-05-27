@@ -113,7 +113,7 @@ namespace Legacy.Tests.EditMode
         }
 
         [Test]
-        public void DoWorldAction_AuthorizedRoleWritesHistory()
+        public void DoWorldAction_JobActionRequiresQueuedTaskFlow()
         {
             var runtime = new WorldRuntime(WorldFactory.CreateVeyneSeedWorld());
             int startingCafeBalance = runtime.State.MoneyAccountsById[new WorldEntityId("account_linden_cafe")].BalanceCents;
@@ -124,13 +124,13 @@ namespace Legacy.Tests.EditMode
                 WorldActionKind.ServeCustomer,
                 new WorldEntityId("place_linden_cafe_interior")));
 
-            Assert.That(result.Succeeded, Is.True);
-            Assert.That(result.Message, Does.Contain("ServeCustomer"));
-            Assert.That(runtime.State.MoneyAccountsById[new WorldEntityId("account_linden_cafe")].BalanceCents, Is.EqualTo(startingCafeBalance + 300));
-            Assert.That(runtime.State.MoneyAccountsById[new WorldEntityId("account_rowan_cash")].BalanceCents, Is.EqualTo(startingActorBalance + 125));
-            Assert.That(runtime.State.Transactions.Count, Is.EqualTo(2));
-            Assert.That(runtime.State.GetHistoryByKind(HistoryEventKind.PaymentRecorded).Count, Is.EqualTo(2));
-            Assert.That(runtime.State.GetHistoryByKind(HistoryEventKind.WorldActionPerformed).Count, Is.EqualTo(1));
+            Assert.That(result.Succeeded, Is.False);
+            Assert.That(result.Message, Does.Contain("No queued work"));
+            Assert.That(runtime.State.MoneyAccountsById[new WorldEntityId("account_linden_cafe")].BalanceCents, Is.EqualTo(startingCafeBalance));
+            Assert.That(runtime.State.MoneyAccountsById[new WorldEntityId("account_rowan_cash")].BalanceCents, Is.EqualTo(startingActorBalance));
+            Assert.That(runtime.State.Transactions.Count, Is.EqualTo(0));
+            Assert.That(runtime.State.GetHistoryByKind(HistoryEventKind.PaymentRecorded).Count, Is.EqualTo(0));
+            Assert.That(runtime.State.GetHistoryByKind(HistoryEventKind.WorldActionPerformed).Count, Is.EqualTo(0));
         }
 
         [Test]

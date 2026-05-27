@@ -13,7 +13,8 @@ namespace Legacy.Save
                 schemaVersion = state.SchemaVersion,
                 worldSeed = state.WorldSeed,
                 currentTime = ToSaveData(state.CurrentTime),
-                currentSceneId = state.CurrentSceneId.Value
+                currentSceneId = state.CurrentSceneId.Value,
+                morning = ToSaveData(state.Morning)
             };
 
             foreach (RegionState region in state.RegionsById.Values) {
@@ -97,8 +98,16 @@ namespace Legacy.Save
                 data.shifts.Add(ToSaveData(shift));
             }
 
+            foreach (ShiftSummaryState summary in state.ShiftSummaries) {
+                data.shiftSummaries.Add(ToSaveData(summary));
+            }
+
             foreach (JobTaskState task in state.JobTasksById.Values) {
                 data.jobTasks.Add(ToSaveData(task));
+            }
+
+            foreach (VisitState visit in state.VisitsById.Values) {
+                data.visits.Add(ToSaveData(visit));
             }
 
             foreach (WorkplaceInventoryState inventory in state.WorkplaceInventoriesById.Values) {
@@ -172,6 +181,9 @@ namespace Legacy.Save
             }
 
             var state = new WorldState(data.schemaVersion, data.worldSeed, ToRuntime(data.currentTime), Id(data.currentSceneId), archive);
+            if (data.morning != null) {
+                state.SetMorning(ToRuntime(data.morning));
+            }
 
             foreach (RegionSaveData region in data.regions) {
                 state.AddRegion(new RegionState(Id(region.id), region.displayName, ToRuntime(region.bounds)));
@@ -265,9 +277,21 @@ namespace Legacy.Save
                 }
             }
 
+            if (data.shiftSummaries != null) {
+                foreach (ShiftSummarySaveData summary in data.shiftSummaries) {
+                    state.AddShiftSummary(ToRuntime(summary));
+                }
+            }
+
             if (data.jobTasks != null) {
                 foreach (JobTaskSaveData task in data.jobTasks) {
                     state.AddJobTask(ToRuntime(task));
+                }
+            }
+
+            if (data.visits != null) {
+                foreach (VisitSaveData visit in data.visits) {
+                    state.AddVisit(ToRuntime(visit));
                 }
             }
 
@@ -400,6 +424,31 @@ namespace Legacy.Save
             }
 
             return historyData;
+        }
+
+        private static MorningSaveData ToSaveData(MorningState morning)
+        {
+            if (morning == null) {
+                return null;
+            }
+
+            return new MorningSaveData {
+                status = morning.Status.ToString(),
+                startedAt = ToSaveData(morning.StartedAt),
+                endedAt = ToSaveData(morning.EndedAt),
+                tasksCompleted = morning.TasksCompleted,
+                moneyEarnedCents = morning.MoneyEarnedCents
+            };
+        }
+
+        private static MorningState ToRuntime(MorningSaveData morning)
+        {
+            return new MorningState(
+                Enum.Parse<MorningStatus>(morning.status),
+                ToRuntime(morning.startedAt),
+                ToRuntime(morning.endedAt),
+                morning.tasksCompleted,
+                morning.moneyEarnedCents);
         }
 
         private static CitizenGoalSaveData ToSaveData(CitizenGoalState goal)
@@ -648,6 +697,33 @@ namespace Legacy.Save
             return state;
         }
 
+        private static ShiftSummarySaveData ToSaveData(ShiftSummaryState summary)
+        {
+            return new ShiftSummarySaveData {
+                shiftId = summary.ShiftId.Value,
+                workerCitizenId = summary.WorkerCitizenId.Value,
+                workplaceId = summary.WorkplaceId.Value,
+                startedAt = ToSaveData(summary.StartedAt),
+                endedAt = ToSaveData(summary.EndedAt),
+                tasksCompleted = summary.TasksCompleted,
+                earnedCents = summary.EarnedCents,
+                historyEventsAtEnd = summary.HistoryEventsAtEnd
+            };
+        }
+
+        private static ShiftSummaryState ToRuntime(ShiftSummarySaveData summary)
+        {
+            return new ShiftSummaryState(
+                Id(summary.shiftId),
+                Id(summary.workerCitizenId),
+                Id(summary.workplaceId),
+                ToRuntime(summary.startedAt),
+                ToRuntime(summary.endedAt),
+                summary.tasksCompleted,
+                summary.earnedCents,
+                summary.historyEventsAtEnd);
+        }
+
         private static JobTaskSaveData ToSaveData(JobTaskState task)
         {
             var data = new JobTaskSaveData {
@@ -694,6 +770,41 @@ namespace Legacy.Save
                 ToRuntime(task.startedAt),
                 ToRuntime(task.completedAt),
                 result);
+        }
+
+        private static VisitSaveData ToSaveData(VisitState visit)
+        {
+            return new VisitSaveData {
+                id = visit.Id.Value,
+                visitorCitizenId = visit.VisitorCitizenId.Value,
+                workplaceId = visit.WorkplaceId.Value,
+                placeId = visit.PlaceId.Value,
+                intent = visit.Intent,
+                requestedTaskDefinitionId = visit.RequestedTaskDefinitionId,
+                linkedTaskId = visit.LinkedTaskId.Value,
+                status = visit.Status.ToString(),
+                arrivalTime = ToSaveData(visit.ArrivalTime),
+                departureTime = ToSaveData(visit.DepartureTime),
+                arrivalLine = visit.ArrivalLine,
+                completionLine = visit.CompletionLine
+            };
+        }
+
+        private static VisitState ToRuntime(VisitSaveData visit)
+        {
+            return new VisitState(
+                Id(visit.id),
+                Id(visit.visitorCitizenId),
+                Id(visit.workplaceId),
+                Id(visit.placeId),
+                visit.intent,
+                visit.requestedTaskDefinitionId,
+                OptionalId(visit.linkedTaskId),
+                Enum.Parse<VisitStatus>(visit.status),
+                ToRuntime(visit.arrivalTime),
+                ToRuntime(visit.departureTime),
+                visit.arrivalLine,
+                visit.completionLine);
         }
 
         private static WorkplaceInventorySaveData ToSaveData(WorkplaceInventoryState inventory)

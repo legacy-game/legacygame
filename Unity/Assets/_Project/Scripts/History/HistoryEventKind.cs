@@ -37,6 +37,9 @@ namespace Legacy.History
         DeliveryReceived,
         PerformanceRecorded,
         SkillImproved,
+        VisitArrived,
+        VisitCompleted,
+        MorningCompleted,
         CitizenRegistered,
         SceneChanged
     }

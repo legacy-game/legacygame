@@ -22,6 +22,10 @@ namespace Legacy.Commands
                 return WorldCommandResult.Failure($"Task not found: {_taskId}");
             }
 
+            if (task.Status != JobTaskStatus.Queued) {
+                return WorldCommandResult.Failure($"Task is {task.Status}; only queued tasks can be started.");
+            }
+
             if (!context.State.TryGetShift(_shiftId, out ShiftState shift) || shift.Status != ShiftStatus.Active) {
                 return WorldCommandResult.Failure("Active shift not found.");
             }
@@ -41,8 +45,12 @@ namespace Legacy.Commands
             }
 
             task.Start(_workerCitizenId, shift.Id, context.State.CurrentTime);
+            if (context.State.TryGetWorkplace(task.WorkplaceId, out WorkplaceState workplace)) {
+                workplace.RemoveTask(task.Id);
+            }
+
             HistoryEvent history = context.History.Create(context.State.CurrentTime, HistoryEventKind.JobTaskStarted, $"Job task started: {definition.DisplayName}.", new[] { _workerCitizenId }, new[] { task.WorkplaceId });
-            return WorldCommandResult.Success($"Started task: {definition.DisplayName}.").WithChangedEntity(task.Id).WithHistoryEvent(history);
+            return WorldCommandResult.Success($"Started task: {definition.DisplayName}.").WithChangedEntity(task.Id).WithChangedEntity(task.WorkplaceId).WithHistoryEvent(history);
         }
     }
 }

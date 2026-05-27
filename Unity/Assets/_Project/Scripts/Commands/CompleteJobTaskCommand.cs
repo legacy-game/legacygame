@@ -57,12 +57,8 @@ namespace Legacy.Commands
                 return WorldCommandResult.Failure("Worker account not found.");
             }
 
-            if (!string.IsNullOrEmpty(definition.InputItemId) && !inventory.TryRemove(definition.InputItemId, definition.InputItemCount)) {
-                return WorldCommandResult.Failure($"Not enough {definition.InputItemId}.");
-            }
-
-            if (!string.IsNullOrEmpty(definition.OutputItemId)) {
-                inventory.Add(definition.OutputItemId, definition.OutputItemCount);
+            if (!string.IsNullOrEmpty(definition.InputItemId) && inventory.CountOf(definition.InputItemId) < definition.InputItemCount) {
+                return WorldCommandResult.Failure($"Missing inventory: needs {definition.InputItemCount} {definition.InputItemId}.");
             }
 
             var economy = new EconomySystem(context.State);
@@ -71,9 +67,24 @@ namespace Legacy.Commands
                 return WorldCommandResult.Failure(wage.Message);
             }
 
+            if (!string.IsNullOrEmpty(definition.InputItemId)) {
+                inventory.TryRemove(definition.InputItemId, definition.InputItemCount);
+            }
+
+            if (!string.IsNullOrEmpty(definition.OutputItemId)) {
+                inventory.Add(definition.OutputItemId, definition.OutputItemCount);
+            }
+
             shift.CompleteTask(task.Id, earnedCents);
             task.Complete(context.State.CurrentTime);
             workplace.RemoveTask(task.Id);
+            context.State.Morning?.AddCompletedTask(earnedCents);
+
+            VisitState visit = null;
+            if (context.State.TryGetVisitForTask(task.Id, out VisitState linkedVisit)) {
+                linkedVisit.MarkServed(context.State.CurrentTime);
+                visit = linkedVisit;
+            }
 
             if (context.State.TryGetEmploymentContract(shift.ContractId, out EmploymentContractState contract) &&
                 JobCatalog.TryGet(contract.JobDefinitionId, out JobDefinition job)) {
@@ -83,8 +94,13 @@ namespace Legacy.Commands
             HistoryEvent payment = context.History.Create(context.State.CurrentTime, HistoryEventKind.PaymentRecorded, $"{EconomySystem.FormatMoney(earnedCents)} paid for {definition.DisplayName}.", new[] { _workerCitizenId, workplace.OwnerCitizenId }, new[] { workplace.PlaceId });
             HistoryEvent completed = context.History.Create(context.State.CurrentTime, HistoryEventKind.JobTaskCompleted, $"{definition.DisplayName} completed with quality {task.Quality}.", new[] { _workerCitizenId }, new[] { workplace.PlaceId });
             HistoryEvent skill = context.History.Create(context.State.CurrentTime, HistoryEventKind.SkillImproved, "A worker gained job experience.", new[] { _workerCitizenId }, new[] { workplace.PlaceId });
+            HistoryEvent visitCompleted = visit == null
+                ? null
+                : context.History.Create(context.State.CurrentTime, HistoryEventKind.VisitCompleted, $"{visit.CompletionLine}", new[] { visit.VisitorCitizenId, _workerCitizenId }, new[] { workplace.PlaceId });
 
-            return WorldCommandResult.Success($"{definition.DisplayName} complete. Money, inventory, skill, and history updated.")
+            WorldCommandResult result = WorldCommandResult.Success(visit == null
+                    ? $"{definition.DisplayName} complete. Money, inventory, skill, and history updated."
+                    : $"{definition.DisplayName} complete. {visit.CompletionLine}")
                 .WithChangedEntity(task.Id)
                 .WithChangedEntity(shift.Id)
                 .WithChangedEntity(workplace.Id)
@@ -92,6 +108,11 @@ namespace Legacy.Commands
                 .WithHistoryEvent(payment)
                 .WithHistoryEvent(completed)
                 .WithHistoryEvent(skill);
+            if (visitCompleted != null) {
+                result.WithChangedEntity(visit.Id).WithHistoryEvent(visitCompleted);
+            }
+
+            return result;
         }
     }
 }

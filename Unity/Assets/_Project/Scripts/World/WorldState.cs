@@ -20,13 +20,16 @@ namespace Legacy.World
         private readonly Dictionary<WorldEntityId, WorkplaceState> _workplacesById = new();
         private readonly Dictionary<WorldEntityId, ShiftState> _shiftsById = new();
         private readonly Dictionary<WorldEntityId, JobTaskState> _jobTasksById = new();
+        private readonly Dictionary<WorldEntityId, VisitState> _visitsById = new();
         private readonly Dictionary<WorldEntityId, WorkplaceInventoryState> _workplaceInventoriesById = new();
         private readonly List<SkillState> _skillStates = new();
         private readonly List<PerformanceRecordState> _performanceRecords = new();
+        private readonly List<ShiftSummaryState> _shiftSummaries = new();
         private readonly Dictionary<WorldEntityId, MoneyAccountState> _moneyAccountsById = new();
         private readonly List<TransactionState> _transactions = new();
         private readonly HistoryStore _history;
         private long _nextTransactionNumber = 1;
+        private MorningState _morning;
 
         public int SchemaVersion { get; }
         public long WorldSeed { get; }
@@ -49,13 +52,16 @@ namespace Legacy.World
         public IReadOnlyDictionary<WorldEntityId, WorkplaceState> WorkplacesById => _workplacesById;
         public IReadOnlyDictionary<WorldEntityId, ShiftState> ShiftsById => _shiftsById;
         public IReadOnlyDictionary<WorldEntityId, JobTaskState> JobTasksById => _jobTasksById;
+        public IReadOnlyDictionary<WorldEntityId, VisitState> VisitsById => _visitsById;
         public IReadOnlyDictionary<WorldEntityId, WorkplaceInventoryState> WorkplaceInventoriesById => _workplaceInventoriesById;
         public IReadOnlyList<SkillState> SkillStates => _skillStates;
         public IReadOnlyList<PerformanceRecordState> PerformanceRecords => _performanceRecords;
+        public IReadOnlyList<ShiftSummaryState> ShiftSummaries => _shiftSummaries;
         public IReadOnlyDictionary<WorldEntityId, MoneyAccountState> MoneyAccountsById => _moneyAccountsById;
         public IReadOnlyList<TransactionState> Transactions => _transactions;
         public IReadOnlyList<HistoryEvent> RecentHistory => _history.RecentHistory;
         public IHistoryArchive HistoryArchive => _history.Archive;
+        public MorningState Morning => _morning;
 
         public WorldState(int schemaVersion, long worldSeed, GameDateTime currentTime, WorldEntityId currentSceneId, IHistoryArchive historyArchive = null)
         {
@@ -64,6 +70,7 @@ namespace Legacy.World
             CurrentTime = currentTime;
             CurrentSceneId = currentSceneId;
             _history = new HistoryStore(historyArchive);
+            _morning = new MorningState(MorningStatus.Active, currentTime, currentTime, 0, 0);
         }
 
         public void SetTime(GameDateTime time)
@@ -166,6 +173,16 @@ namespace Legacy.World
             }
         }
 
+        public void AddVisit(VisitState visit)
+        {
+            _visitsById.Add(visit.Id, visit);
+        }
+
+        public void SetMorning(MorningState morning)
+        {
+            _morning = morning;
+        }
+
         public void AddWorkplaceInventory(WorkplaceInventoryState inventory)
         {
             _workplaceInventoriesById.Add(inventory.WorkplaceId, inventory);
@@ -179,6 +196,11 @@ namespace Legacy.World
         public void AddPerformanceRecord(PerformanceRecordState record)
         {
             _performanceRecords.Add(record);
+        }
+
+        public void AddShiftSummary(ShiftSummaryState summary)
+        {
+            _shiftSummaries.Add(summary);
         }
 
         public void AddMoneyAccount(MoneyAccountState account)
@@ -258,6 +280,67 @@ namespace Legacy.World
         public bool TryGetJobTask(WorldEntityId id, out JobTaskState task)
         {
             return _jobTasksById.TryGetValue(id, out task);
+        }
+
+        public bool TryGetVisit(WorldEntityId id, out VisitState visit)
+        {
+            return _visitsById.TryGetValue(id, out visit);
+        }
+
+        public bool TryGetVisitForTask(WorldEntityId taskId, out VisitState visit)
+        {
+            foreach (VisitState candidate in _visitsById.Values) {
+                if (candidate.LinkedTaskId == taskId) {
+                    visit = candidate;
+                    return true;
+                }
+            }
+
+            visit = null;
+            return false;
+        }
+
+        public bool HasOpenVisitFor(WorldEntityId visitorId, WorldEntityId workplaceId, out VisitState visit)
+        {
+            foreach (VisitState candidate in _visitsById.Values) {
+                if (candidate.VisitorCitizenId == visitorId &&
+                    candidate.WorkplaceId == workplaceId &&
+                    candidate.Status != VisitStatus.Served &&
+                    candidate.Status != VisitStatus.Left &&
+                    candidate.Status != VisitStatus.Failed) {
+                    visit = candidate;
+                    return true;
+                }
+            }
+
+            visit = null;
+            return false;
+        }
+
+        public bool TryGetNextQueuedTask(WorldEntityId workplaceId, WorldActionKind action, out JobTaskState task)
+        {
+            if (!_workplacesById.TryGetValue(workplaceId, out WorkplaceState workplace)) {
+                task = null;
+                return false;
+            }
+
+            foreach (WorldEntityId taskId in workplace.QueuedTaskIds) {
+                if (!_jobTasksById.TryGetValue(taskId, out JobTaskState candidate) ||
+                    candidate.WorkplaceId != workplaceId ||
+                    candidate.Status != JobTaskStatus.Queued) {
+                    continue;
+                }
+
+                if (!JobTaskCatalog.TryGet(candidate.DefinitionId, out JobTaskDefinition definition) || definition.ActionKind != action) {
+                    continue;
+                }
+
+                task = candidate;
+                return true;
+            }
+
+            task = null;
+            return false;
         }
 
         public bool TryGetWorkplaceInventory(WorldEntityId workplaceId, out WorkplaceInventoryState inventory)

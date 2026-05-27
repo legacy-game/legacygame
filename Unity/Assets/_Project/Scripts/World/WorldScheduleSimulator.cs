@@ -42,10 +42,116 @@ namespace Legacy.World
                         $"{step.ArrivalDescription} ({travelPlan.Reason})",
                         new[] { citizen.Id },
                         new[] { targetPlace.Id }));
+                    TryQueueVisitTask(state, history, citizen, targetPlace, step, events);
                 }
             }
 
             return events;
+        }
+
+        private static void TryQueueVisitTask(
+            WorldState state,
+            HistoryLog history,
+            CitizenState citizen,
+            PlaceState targetPlace,
+            RoutineStepDefinition step,
+            List<HistoryEvent> events)
+        {
+            if (!TryGetVisitTemplate(citizen.Id, targetPlace.Id, out WorldEntityId workplaceId, out string taskDefinitionId, out string intent, out string arrivalLine, out string completionLine)) {
+                return;
+            }
+
+            if (!state.TryGetWorkplace(workplaceId, out WorkplaceState workplace)) {
+                return;
+            }
+
+            if (state.HasOpenVisitFor(citizen.Id, workplace.Id, out VisitState _)) {
+                return;
+            }
+
+            var visitId = new WorldEntityId($"visit_{citizen.Id.Value}_{step.Id}_{state.CurrentTime.Date.AbsoluteDay}");
+            var taskId = new WorldEntityId($"task_{visitId.Value}");
+            if (state.TryGetVisit(visitId, out VisitState _) || state.TryGetJobTask(taskId, out JobTaskState _)) {
+                return;
+            }
+
+            var visit = new VisitState(
+                visitId,
+                citizen.Id,
+                workplace.Id,
+                targetPlace.Id,
+                intent,
+                taskDefinitionId,
+                default,
+                VisitStatus.Arrived,
+                state.CurrentTime,
+                state.CurrentTime,
+                arrivalLine,
+                completionLine);
+            var task = new JobTaskState(
+                taskId,
+                taskDefinitionId,
+                workplace.Id,
+                default,
+                default,
+                citizen.Id,
+                JobTaskStatus.Queued,
+                0,
+                state.CurrentTime,
+                state.CurrentTime,
+                state.CurrentTime);
+
+            visit.LinkTask(task.Id);
+            state.AddVisit(visit);
+            state.AddJobTask(task);
+
+            events.Add(history.Create(
+                state.CurrentTime,
+                HistoryEventKind.VisitArrived,
+                $"{citizen.DisplayName} arrived: {intent}. {arrivalLine}",
+                new[] { citizen.Id },
+                new[] { targetPlace.Id }));
+            events.Add(history.Create(
+                state.CurrentTime,
+                HistoryEventKind.JobTaskCreated,
+                $"{citizen.DisplayName} created task: {intent}.",
+                new[] { citizen.Id },
+                new[] { targetPlace.Id }));
+        }
+
+        private static bool TryGetVisitTemplate(
+            WorldEntityId citizenId,
+            WorldEntityId placeId,
+            out WorldEntityId workplaceId,
+            out string taskDefinitionId,
+            out string intent,
+            out string arrivalLine,
+            out string completionLine)
+        {
+            if (citizenId == new WorldEntityId("citizen_mr_holland") && placeId == new WorldEntityId("place_linden_cafe_interior")) {
+                workplaceId = new WorldEntityId("workplace_linden_cafe");
+                taskDefinitionId = JobTaskCatalog.ServeCafeCustomer;
+                intent = "Coffee order";
+                arrivalLine = "Morning. Coffee, please.";
+                completionLine = "Thanks. Needed that.";
+                return true;
+            }
+
+            if (citizenId == new WorldEntityId("citizen_sasha") && placeId == new WorldEntityId("place_pell_pharmacy_interior")) {
+                workplaceId = new WorldEntityId("workplace_pell_pharmacy");
+                taskDefinitionId = JobTaskCatalog.StockPharmacyShelves;
+                intent = "Restock pharmacy shelves";
+                arrivalLine = "Delivery came in. Shelves need doing.";
+                completionLine = "Good. That saves me a trip.";
+                return true;
+            }
+
+            workplaceId = default;
+            taskDefinitionId = string.Empty;
+            intent = string.Empty;
+            arrivalLine = string.Empty;
+            completionLine = string.Empty;
+            return false;
         }
 
         private static bool TryProcessActiveGoal(

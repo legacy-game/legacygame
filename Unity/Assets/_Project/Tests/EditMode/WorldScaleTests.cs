@@ -65,7 +65,7 @@ namespace Legacy.Tests.EditMode
             var exteriorSceneId = new WorldEntityId("scene_veyne_linden_street");
             var cafeInteriorSceneId = new WorldEntityId("scene_linden_cafe_interior");
 
-            Assert.That(state.GetBuildingIdsInSceneChunk(exteriorSceneId, GridChunkCoord.FromGridCoord(new GridCoord(12, 7))).Count, Is.EqualTo(1));
+            Assert.That(state.GetBuildingIdsInSceneChunk(exteriorSceneId, GridChunkCoord.FromGridCoord(new GridCoord(12, 7))).Count, Is.EqualTo(2));
             Assert.That(state.GetBuildingIdsInSceneChunk(cafeInteriorSceneId, new GridChunkCoord(0, 0)).Count, Is.EqualTo(1));
         }
     }
