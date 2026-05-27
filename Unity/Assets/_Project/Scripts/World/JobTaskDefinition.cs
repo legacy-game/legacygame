@@ -16,6 +16,7 @@ namespace Legacy.World
         public int InputItemCount { get; }
         public string OutputItemId { get; }
         public int OutputItemCount { get; }
+        public string RecipeId { get; }
 
         public JobTaskDefinition(
             string id,
@@ -28,7 +29,8 @@ namespace Legacy.World
             string inputItemId,
             int inputItemCount,
             string outputItemId,
-            int outputItemCount)
+            int outputItemCount,
+            string recipeId = "")
         {
             Id = id;
             DisplayName = displayName;
@@ -41,6 +43,7 @@ namespace Legacy.World
             InputItemCount = inputItemCount;
             OutputItemId = outputItemId ?? string.Empty;
             OutputItemCount = outputItemCount;
+            RecipeId = recipeId ?? string.Empty;
         }
     }
 }

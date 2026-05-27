@@ -60,6 +60,20 @@ Phase order:
 4. create a second Unity player view using the fake transport
 5. only then test a real networking package
 
+## Current Foundation
+
+The first server-authoritative prep layer is local-only and transport-neutral:
+
+- `WorldCommandEnvelopeDto` is the serialized client input shape. It carries a protocol version, command id, client id, actor id, expected state revision, client sequence, command kind, and string key/value arguments.
+- `WorldCommandEnvelopeMapper` is the only envelope-to-command materializer. It whitelists supported command kinds instead of accepting arbitrary C# type names.
+- `WorldCommandEnvelopeValidator` performs deterministic validation before runtime execution, including protocol checks, duplicate argument checks, and stale state revision rejection.
+- `WorldCommandResultDto`, `WorldEventDto`, and `WorldSnapshotDto` are the broadcast shapes clients can render without owning `WorldState`.
+- `LocalAuthoritativeWorldHost` and `LocalWorldClient` prove the host/client split without a networking package. The host owns `WorldRuntime`; clients submit envelopes and receive result plus snapshot DTOs.
+
+The scaffold currently supports the commands most useful for the local café proof: `AdvanceTime`, `DoWorldAction`, `StartJobTask`, `SubmitMiniGameResult`, `CompleteJobTask`, `EndShift`, and `SwitchScene`.
+
+Next transport step: add a small `IWorldTransport` facade over the local host/client API, then use it from UI code without changing command semantics.
+
 ## Success Criteria
 
 - two clients can move in one café scene

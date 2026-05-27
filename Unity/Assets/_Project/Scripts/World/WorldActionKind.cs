@@ -10,6 +10,9 @@ namespace Legacy.World
         PatrolDistrict,
         FileCivicReport,
         ProvideCare,
-        ClaimTerritory
+        ClaimTerritory,
+        LeaseProperty,
+        PayRent,
+        RecordBusinessIncome
     }
 }

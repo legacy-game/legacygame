@@ -35,12 +35,20 @@ namespace Legacy.History
         MiniGameResultSubmitted,
         JobTaskCompleted,
         DeliveryReceived,
+        CafeSaleCompleted,
+        CashChangeMade,
         PerformanceRecorded,
         SkillImproved,
         VisitArrived,
         VisitCompleted,
         MorningCompleted,
         CitizenRegistered,
-        SceneChanged
+        CitizenTalked,
+        SceneChanged,
+        CivicReportFiled,
+        PublicRecordQueried,
+        LeaseSigned,
+        RentPaid,
+        BusinessIncomeRecorded
     }
 }

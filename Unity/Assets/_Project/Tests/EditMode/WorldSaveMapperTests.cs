@@ -193,5 +193,54 @@ namespace Legacy.Tests.EditMode
             Assert.That(loaded.CitizenGoals.Count, Is.EqualTo(1));
             Assert.That(loaded.CitizenGoals[0].Reason, Is.EqualTo("Visit Linden Cafe"));
         }
+
+        [Test]
+        public void SaveRoundTrip_PreservesDialogueRelationshipsAndMemories()
+        {
+            var runtime = new WorldRuntime(WorldFactory.CreateVeyneSeedWorld());
+            var actorId = new WorldEntityId("citizen_noaharan");
+            var rowanId = new WorldEntityId("citizen_rowan");
+
+            runtime.Execute(new TalkToCitizenCommand(actorId, rowanId, "morning"));
+
+            WorldSaveData saveData = WorldSaveMapper.ToSaveData(runtime.State);
+            WorldState loaded = WorldSaveMapper.ToRuntime(saveData);
+
+            Assert.That(loaded.DialogueStatesByCitizenId[rowanId].LastLineId, Is.EqualTo(DialogueCatalog.RowanMorningGreeting));
+            Assert.That(loaded.DialogueStatesByCitizenId[rowanId].ConversationCount, Is.EqualTo(1));
+            Assert.That(loaded.Relationships.Count, Is.EqualTo(1));
+            Assert.That(loaded.Relationships[0].OwnerCitizenId, Is.EqualTo(rowanId));
+            Assert.That(loaded.Relationships[0].OtherCitizenId, Is.EqualTo(actorId));
+            Assert.That(loaded.Relationships[0].Familiarity, Is.EqualTo(1));
+            Assert.That(loaded.GetMemoriesForCitizen(rowanId).Count, Is.EqualTo(1));
+            Assert.That(loaded.GetHistoryByKind(Legacy.History.HistoryEventKind.CitizenTalked).Count, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void SaveRoundTrip_PreservesCivicReportsPublicRecordsAndRegistry()
+        {
+            var runtime = new WorldRuntime(WorldFactory.CreateVeyneSeedWorld());
+            var reporterId = new WorldEntityId("citizen_noaharan");
+            var subjectId = new WorldEntityId("citizen_rowan");
+
+            runtime.Execute(new FileCivicReportCommand(
+                new WorldEntityId("civic_report_rowan_noise"),
+                reporterId,
+                subjectId,
+                new WorldEntityId("place_linden_cafe_interior"),
+                "Kept the cafe open after quiet hours.",
+                -2));
+
+            WorldSaveData saveData = WorldSaveMapper.ToSaveData(runtime.State);
+            WorldState loaded = WorldSaveMapper.ToRuntime(saveData);
+
+            Assert.That(loaded.CivicReportsById.Count, Is.EqualTo(1));
+            Assert.That(loaded.CivicReportsById[new WorldEntityId("civic_report_rowan_noise")].Summary, Is.EqualTo("Kept the cafe open after quiet hours."));
+            Assert.That(loaded.CivicRegistryEntries.Count, Is.EqualTo(1));
+            Assert.That(loaded.CivicRegistryEntries[0].CitizenId, Is.EqualTo(subjectId));
+            Assert.That(loaded.PublicRecordsByCitizenId[subjectId].ReputationScore, Is.EqualTo(-2));
+            Assert.That(loaded.PublicRecordsByCitizenId[reporterId].ReportsFiled, Is.EqualTo(1));
+            Assert.That(loaded.GetHistoryByKind(Legacy.History.HistoryEventKind.CivicReportFiled).Count, Is.EqualTo(1));
+        }
     }
 }

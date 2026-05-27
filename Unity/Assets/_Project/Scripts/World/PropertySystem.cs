@@ -145,6 +145,10 @@ namespace Legacy.World
                 return new PropertyAccessResult(true, rule, "Owner access.");
             }
 
+            if (_state.HasActiveTenantAccess(citizen.Id, workplaceBuildingId)) {
+                return new PropertyAccessResult(true, rule, "Tenant access.");
+            }
+
             if (rule == AccessRule.EmployeesOnly && citizen.WorkplaceBuildingId == workplaceBuildingId) {
                 return new PropertyAccessResult(true, rule, "Employee access.");
             }

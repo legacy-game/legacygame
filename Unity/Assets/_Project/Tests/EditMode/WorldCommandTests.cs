@@ -217,6 +217,57 @@ namespace Legacy.Tests.EditMode
         }
 
         [Test]
+        public void FileCivicReport_AddsReportRegistryReputationAndHistory()
+        {
+            var runtime = new WorldRuntime(WorldFactory.CreateVeyneSeedWorld());
+            var reporterId = new WorldEntityId("citizen_noaharan");
+            var subjectId = new WorldEntityId("citizen_rowan");
+            var placeId = new WorldEntityId("place_linden_cafe_interior");
+
+            WorldCommandResult result = runtime.Execute(new FileCivicReportCommand(
+                new WorldEntityId("civic_report_rowan_noise"),
+                reporterId,
+                subjectId,
+                placeId,
+                "Kept the cafe open after quiet hours.",
+                -2));
+
+            Assert.That(result.Succeeded, Is.True);
+            Assert.That(runtime.State.CivicReportsById.Count, Is.EqualTo(1));
+            Assert.That(runtime.State.CivicRegistryEntries.Count, Is.EqualTo(1));
+            Assert.That(runtime.State.PublicRecordsByCitizenId[subjectId].ReputationScore, Is.EqualTo(-2));
+            Assert.That(runtime.State.PublicRecordsByCitizenId[subjectId].ReportsReceived, Is.EqualTo(1));
+            Assert.That(runtime.State.PublicRecordsByCitizenId[reporterId].ReportsFiled, Is.EqualTo(1));
+            Assert.That(runtime.State.GetHistoryByKind(HistoryEventKind.CivicReportFiled).Count, Is.EqualTo(1));
+            Assert.That(runtime.State.GetHistoryForActor(subjectId)[^1].Kind, Is.EqualTo(HistoryEventKind.CivicReportFiled));
+        }
+
+        [Test]
+        public void QueryPublicRecord_ReturnsRegistryAndHistorySummary()
+        {
+            var runtime = new WorldRuntime(WorldFactory.CreateVeyneSeedWorld());
+            var reporterId = new WorldEntityId("citizen_noaharan");
+            var subjectId = new WorldEntityId("citizen_rowan");
+
+            runtime.Execute(new FileCivicReportCommand(
+                new WorldEntityId("civic_report_rowan_noise"),
+                reporterId,
+                subjectId,
+                new WorldEntityId("place_linden_cafe_interior"),
+                "Kept the cafe open after quiet hours.",
+                -2));
+
+            WorldCommandResult result = runtime.Execute(new QueryPublicRecordCommand(subjectId, reporterId));
+
+            Assert.That(result.Succeeded, Is.True);
+            Assert.That(result.Message, Does.Contain("Public record: Rowan"));
+            Assert.That(result.Message, Does.Contain("Reputation: -2"));
+            Assert.That(result.Message, Does.Contain("CivicReport: Kept the cafe open after quiet hours."));
+            Assert.That(result.Message, Does.Contain("CivicReportFiled"));
+            Assert.That(runtime.State.GetHistoryByKind(HistoryEventKind.PublicRecordQueried).Count, Is.EqualTo(1));
+        }
+
+        [Test]
         public void TransferBuildingOwnership_ChangesOwnerAndWritesHistory()
         {
             var runtime = new WorldRuntime(WorldFactory.CreateVeyneSeedWorld());
@@ -510,6 +561,29 @@ namespace Legacy.Tests.EditMode
             Assert.That(placeResult.Succeeded, Is.True);
             Assert.That(runtime.State.GetHistoryByKind(HistoryEventKind.PlotInspected).Count, Is.EqualTo(1));
             Assert.That(runtime.State.GetHistoryByKind(HistoryEventKind.PlaceInspected).Count, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void TalkToCitizen_WritesDialogueRelationshipMemoryAndHistory()
+        {
+            var runtime = new WorldRuntime(WorldFactory.CreateVeyneSeedWorld());
+            var actorId = new WorldEntityId("citizen_noaharan");
+            var rowanId = new WorldEntityId("citizen_rowan");
+
+            WorldCommandResult result = runtime.Execute(new TalkToCitizenCommand(actorId, rowanId, "morning"));
+
+            Assert.That(result.Succeeded, Is.True);
+            Assert.That(result.Message, Does.Contain("Rowan:"));
+            Assert.That(runtime.State.DialogueStatesByCitizenId[rowanId].LastLineId, Is.EqualTo(DialogueCatalog.RowanMorningGreeting));
+            Assert.That(runtime.State.DialogueStatesByCitizenId[rowanId].ConversationCount, Is.EqualTo(1));
+
+            RelationshipState relationship = runtime.State.GetOrCreateRelationship(rowanId, actorId);
+            Assert.That(relationship.Familiarity, Is.EqualTo(1));
+            Assert.That(relationship.Affinity, Is.EqualTo(1));
+
+            Assert.That(runtime.State.GetMemoriesForCitizen(rowanId).Count, Is.EqualTo(1));
+            Assert.That(runtime.State.GetMemoriesForCitizen(rowanId)[0].SubjectCitizenId, Is.EqualTo(actorId));
+            Assert.That(runtime.State.GetHistoryByKind(HistoryEventKind.CitizenTalked).Count, Is.EqualTo(1));
         }
 
         [Test]

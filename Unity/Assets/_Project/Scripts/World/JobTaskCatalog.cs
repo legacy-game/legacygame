@@ -14,10 +14,11 @@ namespace Legacy.World
                 MiniGameKind.CafePrep,
                 8,
                 125,
-                "coffee_beans",
+                ItemCatalog.CoffeeBeans,
                 1,
-                "prepared_coffee",
-                1),
+                ItemCatalog.PreparedCoffee,
+                1,
+                CafeRecipeCatalog.HouseCoffee),
             new JobTaskDefinition(
                 StockPharmacyShelves,
                 "Stock pharmacy shelves",
@@ -26,9 +27,9 @@ namespace Legacy.World
                 MiniGameKind.StockShelves,
                 10,
                 300,
-                "pharmacy_stock_box",
+                ItemCatalog.PharmacyStockBox,
                 1,
-                "stocked_shelf",
+                ItemCatalog.StockedShelf,
                 1)
         };
 

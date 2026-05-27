@@ -102,6 +102,7 @@ This is a multi-file document. Start with the executive summary, then read the p
 
 ### Section 14 — Tooling
 - [14-tools-to-install.md](14-tools-to-install.md)
+- [18-ci-build-reliability.md](18-ci-build-reliability.md)
 
 ### Section 15 — Glossary
 - [15-glossary.md](15-glossary.md)

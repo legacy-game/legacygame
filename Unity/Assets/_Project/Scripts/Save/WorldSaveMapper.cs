@@ -114,6 +114,10 @@ namespace Legacy.Save
                 data.workplaceInventories.Add(ToSaveData(inventory));
             }
 
+            foreach (InventoryContainerState inventory in state.InventoryContainersById.Values) {
+                data.inventoryContainers.Add(ToSaveData(inventory));
+            }
+
             foreach (SkillState skill in state.SkillStates) {
                 data.skills.Add(ToSaveData(skill));
             }
@@ -126,8 +130,48 @@ namespace Legacy.Save
                 data.moneyAccounts.Add(ToSaveData(account));
             }
 
+            foreach (CashDrawerState drawer in state.CashDrawersById.Values) {
+                data.cashDrawers.Add(ToSaveData(drawer));
+            }
+
             foreach (TransactionState transaction in state.Transactions) {
                 data.transactions.Add(ToSaveData(transaction));
+            }
+
+            foreach (DialogueState dialogue in state.DialogueStatesByCitizenId.Values) {
+                data.dialogues.Add(ToSaveData(dialogue));
+            }
+
+            foreach (RelationshipState relationship in state.Relationships) {
+                data.relationships.Add(ToSaveData(relationship));
+            }
+
+            foreach (CitizenMemoryState memory in state.CitizenMemoriesById.Values) {
+                data.citizenMemories.Add(ToSaveData(memory));
+            }
+
+            foreach (PublicRecordState record in state.PublicRecordsByCitizenId.Values) {
+                data.publicRecords.Add(ToSaveData(record));
+            }
+
+            foreach (CivicReportState report in state.CivicReportsById.Values) {
+                data.civicReports.Add(ToSaveData(report));
+            }
+
+            foreach (CivicRegistryEntryState entry in state.CivicRegistryEntries) {
+                data.civicRegistryEntries.Add(ToSaveData(entry));
+            }
+
+            foreach (LeaseContractState contract in state.LeaseContractsById.Values) {
+                data.leaseContracts.Add(ToSaveData(contract));
+            }
+
+            foreach (TenantRecordState record in state.TenantRecordsById.Values) {
+                data.tenantRecords.Add(ToSaveData(record));
+            }
+
+            foreach (BusinessLedgerEntryState entry in state.BusinessLedgerEntries) {
+                data.businessLedgerEntries.Add(ToSaveData(entry));
             }
 
             foreach (PlotState plot in state.PlotsById.Values) {
@@ -301,6 +345,12 @@ namespace Legacy.Save
                 }
             }
 
+            if (data.inventoryContainers != null) {
+                foreach (InventoryContainerSaveData inventory in data.inventoryContainers) {
+                    state.AddInventoryContainer(ToRuntime(inventory));
+                }
+            }
+
             if (data.skills != null) {
                 foreach (SkillSaveData skill in data.skills) {
                     state.AddSkillState(ToRuntime(skill));
@@ -319,9 +369,69 @@ namespace Legacy.Save
                 }
             }
 
+            if (data.cashDrawers != null) {
+                foreach (CashDrawerSaveData drawer in data.cashDrawers) {
+                    state.AddCashDrawer(ToRuntime(drawer));
+                }
+            }
+
             if (data.transactions != null) {
                 foreach (TransactionSaveData transaction in data.transactions) {
                     state.AddTransaction(ToRuntime(transaction));
+                }
+            }
+
+            if (data.dialogues != null) {
+                foreach (DialogueSaveData dialogue in data.dialogues) {
+                    state.AddDialogueState(ToRuntime(dialogue));
+                }
+            }
+
+            if (data.relationships != null) {
+                foreach (RelationshipSaveData relationship in data.relationships) {
+                    state.AddRelationship(ToRuntime(relationship));
+                }
+            }
+
+            if (data.citizenMemories != null) {
+                foreach (CitizenMemorySaveData memory in data.citizenMemories) {
+                    state.AddCitizenMemory(ToRuntime(memory));
+                }
+            }
+
+            if (data.publicRecords != null) {
+                foreach (PublicRecordSaveData record in data.publicRecords) {
+                    state.AddPublicRecord(ToRuntime(record));
+                }
+            }
+
+            if (data.civicReports != null) {
+                foreach (CivicReportSaveData report in data.civicReports) {
+                    state.AddCivicReport(ToRuntime(report));
+                }
+            }
+
+            if (data.civicRegistryEntries != null) {
+                foreach (CivicRegistryEntrySaveData entry in data.civicRegistryEntries) {
+                    state.AddCivicRegistryEntry(ToRuntime(entry));
+                }
+            }
+
+            if (data.leaseContracts != null) {
+                foreach (LeaseContractSaveData contract in data.leaseContracts) {
+                    state.AddLeaseContract(ToRuntime(contract));
+                }
+            }
+
+            if (data.tenantRecords != null) {
+                foreach (TenantRecordSaveData record in data.tenantRecords) {
+                    state.AddTenantRecord(ToRuntime(record));
+                }
+            }
+
+            if (data.businessLedgerEntries != null) {
+                foreach (BusinessLedgerEntrySaveData entry in data.businessLedgerEntries) {
+                    state.AddBusinessLedgerEntry(ToRuntime(entry));
                 }
             }
 
@@ -827,6 +937,35 @@ namespace Legacy.Save
             return state;
         }
 
+        private static InventoryContainerSaveData ToSaveData(InventoryContainerState inventory)
+        {
+            var data = new InventoryContainerSaveData {
+                id = inventory.Id.Value,
+                ownerEntityId = inventory.OwnerEntityId.Value,
+                kind = inventory.Kind.ToString(),
+                displayName = inventory.DisplayName
+            };
+            foreach (InventoryStackState stack in inventory.Stacks) {
+                data.stacks.Add(new InventoryStackSaveData { itemId = stack.ItemId, count = stack.Count });
+            }
+
+            return data;
+        }
+
+        private static InventoryContainerState ToRuntime(InventoryContainerSaveData inventory)
+        {
+            var state = new InventoryContainerState(
+                Id(inventory.id),
+                Id(inventory.ownerEntityId),
+                Enum.Parse<InventoryContainerKind>(inventory.kind),
+                inventory.displayName);
+            foreach (InventoryStackSaveData stack in inventory.stacks) {
+                state.TryAdd(stack.itemId, stack.count);
+            }
+
+            return state;
+        }
+
         private static SkillSaveData ToSaveData(SkillState skill)
         {
             return new SkillSaveData { citizenId = skill.CitizenId.Value, skill = skill.Skill.ToString(), experience = skill.Experience };
@@ -873,6 +1012,38 @@ namespace Legacy.Save
                 account.balanceCents);
         }
 
+        private static CashDrawerSaveData ToSaveData(CashDrawerState drawer)
+        {
+            var data = new CashDrawerSaveData {
+                id = drawer.Id.Value,
+                ownerEntityId = drawer.OwnerEntityId.Value,
+                kind = drawer.Kind.ToString(),
+                displayName = drawer.DisplayName
+            };
+            foreach (CashDenominationStackState stack in drawer.Stacks) {
+                data.stacks.Add(new CashDenominationStackSaveData {
+                    denomination = stack.Denomination.ToString(),
+                    count = stack.Count
+                });
+            }
+
+            return data;
+        }
+
+        private static CashDrawerState ToRuntime(CashDrawerSaveData drawer)
+        {
+            var state = new CashDrawerState(
+                Id(drawer.id),
+                Id(drawer.ownerEntityId),
+                Enum.Parse<CashContainerKind>(drawer.kind),
+                drawer.displayName);
+            foreach (CashDenominationStackSaveData stack in drawer.stacks) {
+                state.Add(Enum.Parse<CashDenomination>(stack.denomination), stack.count);
+            }
+
+            return state;
+        }
+
         private static TransactionSaveData ToSaveData(TransactionState transaction)
         {
             return new TransactionSaveData {
@@ -898,6 +1069,229 @@ namespace Legacy.Save
                 transaction.reason,
                 OptionalId(transaction.relatedPlaceId),
                 Enum.Parse<WorldActionKind>(transaction.actionKind));
+        }
+
+        private static DialogueSaveData ToSaveData(DialogueState dialogue)
+        {
+            return new DialogueSaveData {
+                citizenId = dialogue.CitizenId.Value,
+                lastLineId = dialogue.LastLineId,
+                conversationCount = dialogue.ConversationCount,
+                lastTalkedAt = ToSaveData(dialogue.LastTalkedAt)
+            };
+        }
+
+        private static DialogueState ToRuntime(DialogueSaveData dialogue)
+        {
+            return new DialogueState(
+                Id(dialogue.citizenId),
+                dialogue.lastLineId,
+                dialogue.conversationCount,
+                ToRuntime(dialogue.lastTalkedAt));
+        }
+
+        private static RelationshipSaveData ToSaveData(RelationshipState relationship)
+        {
+            return new RelationshipSaveData {
+                ownerCitizenId = relationship.OwnerCitizenId.Value,
+                otherCitizenId = relationship.OtherCitizenId.Value,
+                affinity = relationship.Affinity,
+                familiarity = relationship.Familiarity,
+                lastInteractionAt = ToSaveData(relationship.LastInteractionAt)
+            };
+        }
+
+        private static RelationshipState ToRuntime(RelationshipSaveData relationship)
+        {
+            return new RelationshipState(
+                Id(relationship.ownerCitizenId),
+                Id(relationship.otherCitizenId),
+                relationship.affinity,
+                relationship.familiarity,
+                ToRuntime(relationship.lastInteractionAt));
+        }
+
+        private static CitizenMemorySaveData ToSaveData(CitizenMemoryState memory)
+        {
+            return new CitizenMemorySaveData {
+                id = memory.Id.Value,
+                citizenId = memory.CitizenId.Value,
+                subjectCitizenId = memory.SubjectCitizenId.Value,
+                kind = memory.Kind,
+                summary = memory.Summary,
+                createdAt = ToSaveData(memory.CreatedAt),
+                sourceHistoryEventId = memory.SourceHistoryEventId.Value,
+                salience = memory.Salience
+            };
+        }
+
+        private static CitizenMemoryState ToRuntime(CitizenMemorySaveData memory)
+        {
+            return new CitizenMemoryState(
+                Id(memory.id),
+                Id(memory.citizenId),
+                Id(memory.subjectCitizenId),
+                memory.kind,
+                memory.summary,
+                ToRuntime(memory.createdAt),
+                Id(memory.sourceHistoryEventId),
+                memory.salience);
+        }
+
+        private static PublicRecordSaveData ToSaveData(PublicRecordState record)
+        {
+            return new PublicRecordSaveData {
+                citizenId = record.CitizenId.Value,
+                reputationScore = record.ReputationScore,
+                reportsFiled = record.ReportsFiled,
+                reportsReceived = record.ReportsReceived,
+                lastUpdatedAt = ToSaveData(record.LastUpdatedAt)
+            };
+        }
+
+        private static PublicRecordState ToRuntime(PublicRecordSaveData record)
+        {
+            return new PublicRecordState(
+                Id(record.citizenId),
+                record.reputationScore,
+                record.reportsFiled,
+                record.reportsReceived,
+                ToRuntime(record.lastUpdatedAt));
+        }
+
+        private static CivicReportSaveData ToSaveData(CivicReportState report)
+        {
+            return new CivicReportSaveData {
+                id = report.Id.Value,
+                reporterCitizenId = report.ReporterCitizenId.Value,
+                subjectCitizenId = report.SubjectCitizenId.Value,
+                relatedPlaceId = report.RelatedPlaceId.Value,
+                summary = report.Summary,
+                createdAt = ToSaveData(report.CreatedAt),
+                status = report.Status.ToString()
+            };
+        }
+
+        private static CivicReportState ToRuntime(CivicReportSaveData report)
+        {
+            return new CivicReportState(
+                Id(report.id),
+                Id(report.reporterCitizenId),
+                Id(report.subjectCitizenId),
+                OptionalId(report.relatedPlaceId),
+                report.summary,
+                ToRuntime(report.createdAt),
+                Enum.Parse<CivicReportStatus>(report.status));
+        }
+
+        private static CivicRegistryEntrySaveData ToSaveData(CivicRegistryEntryState entry)
+        {
+            return new CivicRegistryEntrySaveData {
+                id = entry.Id.Value,
+                citizenId = entry.CitizenId.Value,
+                kind = entry.Kind.ToString(),
+                summary = entry.Summary,
+                createdAt = ToSaveData(entry.CreatedAt),
+                sourceReportId = entry.SourceReportId.Value,
+                filedByCitizenId = entry.FiledByCitizenId.Value,
+                relatedPlaceId = entry.RelatedPlaceId.Value
+            };
+        }
+
+        private static CivicRegistryEntryState ToRuntime(CivicRegistryEntrySaveData entry)
+        {
+            return new CivicRegistryEntryState(
+                Id(entry.id),
+                Id(entry.citizenId),
+                Enum.Parse<CivicRegistryEntryKind>(entry.kind),
+                entry.summary,
+                ToRuntime(entry.createdAt),
+                OptionalId(entry.sourceReportId),
+                Id(entry.filedByCitizenId),
+                OptionalId(entry.relatedPlaceId));
+        }
+
+        private static LeaseContractSaveData ToSaveData(LeaseContractState contract)
+        {
+            return new LeaseContractSaveData {
+                id = contract.Id.Value,
+                buildingId = contract.BuildingId.Value,
+                landlordCitizenId = contract.LandlordCitizenId.Value,
+                tenantCitizenId = contract.TenantCitizenId.Value,
+                rentCents = contract.RentCents,
+                dueDayOfMonth = contract.DueDayOfMonth,
+                status = contract.Status.ToString(),
+                startedAt = ToSaveData(contract.StartedAt),
+                lastPaidAt = ToSaveData(contract.LastPaidAt),
+                paymentsMade = contract.PaymentsMade
+            };
+        }
+
+        private static LeaseContractState ToRuntime(LeaseContractSaveData contract)
+        {
+            return new LeaseContractState(
+                Id(contract.id),
+                Id(contract.buildingId),
+                Id(contract.landlordCitizenId),
+                Id(contract.tenantCitizenId),
+                contract.rentCents,
+                contract.dueDayOfMonth,
+                Enum.Parse<LeaseContractStatus>(contract.status),
+                ToRuntime(contract.startedAt),
+                ToRuntime(contract.lastPaidAt),
+                contract.paymentsMade);
+        }
+
+        private static TenantRecordSaveData ToSaveData(TenantRecordState record)
+        {
+            return new TenantRecordSaveData {
+                id = record.Id.Value,
+                leaseContractId = record.LeaseContractId.Value,
+                buildingId = record.BuildingId.Value,
+                tenantCitizenId = record.TenantCitizenId.Value,
+                status = record.Status.ToString(),
+                startedAt = ToSaveData(record.StartedAt),
+                endedAt = ToSaveData(record.EndedAt)
+            };
+        }
+
+        private static TenantRecordState ToRuntime(TenantRecordSaveData record)
+        {
+            return new TenantRecordState(
+                Id(record.id),
+                Id(record.leaseContractId),
+                Id(record.buildingId),
+                Id(record.tenantCitizenId),
+                Enum.Parse<TenantRecordStatus>(record.status),
+                ToRuntime(record.startedAt),
+                ToRuntime(record.endedAt));
+        }
+
+        private static BusinessLedgerEntrySaveData ToSaveData(BusinessLedgerEntryState entry)
+        {
+            return new BusinessLedgerEntrySaveData {
+                id = entry.Id.Value,
+                workplaceId = entry.WorkplaceId.Value,
+                accountId = entry.AccountId.Value,
+                kind = entry.Kind.ToString(),
+                amountCents = entry.AmountCents,
+                reason = entry.Reason,
+                timestamp = ToSaveData(entry.Timestamp),
+                relatedEntityId = entry.RelatedEntityId.Value
+            };
+        }
+
+        private static BusinessLedgerEntryState ToRuntime(BusinessLedgerEntrySaveData entry)
+        {
+            return new BusinessLedgerEntryState(
+                Id(entry.id),
+                Id(entry.workplaceId),
+                Id(entry.accountId),
+                Enum.Parse<BusinessLedgerEntryKind>(entry.kind),
+                entry.amountCents,
+                entry.reason,
+                ToRuntime(entry.timestamp),
+                OptionalId(entry.relatedEntityId));
         }
 
         private static TerritoryChunkState ToRuntime(TerritoryChunkSaveData territory)
