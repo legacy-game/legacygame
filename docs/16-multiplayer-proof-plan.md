@@ -74,6 +74,17 @@ The scaffold currently supports the commands most useful for the local café pro
 
 Next transport step: add a small `IWorldTransport` facade over the local host/client API, then use it from UI code without changing command semantics.
 
+## Local Transport Proof
+
+The current proof now includes an in-memory transport layer:
+
+- `IWorldTransport` is the local transport contract for connecting clients, submitting serialized command envelopes, and reading the latest host snapshot.
+- `InMemoryWorldTransport` owns a `LocalAuthoritativeWorldHost`; it does not create sockets, accounts, lobbies, or production networking concerns.
+- `IWorldTransportClient` is the client-side contract; `InMemoryWorldTransportClient` creates command envelopes from its last known server revision and receives every server result broadcast, including snapshots and events for commands submitted by other clients.
+- Two-client tests cover initial snapshot agreement, host command submission broadcast, event delivery, and a contested job task where the first completion wins and the stale second completion is rejected.
+
+This keeps the server-authoritative boundary transport-neutral while proving that client views can converge from host-owned snapshots/results.
+
 ## Success Criteria
 
 - two clients can move in one café scene

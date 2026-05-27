@@ -116,6 +116,7 @@ namespace Legacy.World
             state.AddWorkplaceInventory(bookshopInventory);
             state.AddJobPosting(new JobPostingState(new WorldEntityId("posting_cafe_worker_001"), JobCatalog.CafeWorker, noahId, cafeWorkplaceId, RoleCatalog.CafeWorker, PayModelKind.PerTask, 125, 2, JobPostingStatus.Open, new GameDateTime(new GameDate(2003, 5, 14), new TimeOfDay(6, 30))));
             state.AddJobPosting(new JobPostingState(new WorldEntityId("posting_pharmacy_clerk_001"), JobCatalog.PharmacyClerk, pellId, pharmacyWorkplaceId, RoleCatalog.Shopkeeper, PayModelKind.PerTask, 300, 1, JobPostingStatus.Open, new GameDateTime(new GameDate(2003, 5, 14), new TimeOfDay(6, 30))));
+            AddFinalGameScaffolds(state);
 
             var history = new HistoryLog();
             state.AddHistoryEvent(history.Create(
@@ -126,6 +127,60 @@ namespace Legacy.World
                 new[] { cafeId, pharmacyId }));
 
             return state;
+        }
+
+        private static void AddFinalGameScaffolds(WorldState state)
+        {
+            GameDateTime createdAt = state.CurrentTime;
+            state.AddFinalGameScaffold(new FinalGameScaffoldState(
+                new WorldEntityId("scaffold_family_legacy"),
+                FinalGameScaffoldKind.FamilyLegacy,
+                "Family and Legacy",
+                "Tracks future household ties, inheritance, children, ancestry, and long-form legacy outcomes.",
+                "Data-only placeholder. Do not simulate generations, inheritance transfer, or family gameplay until a dedicated slice owns those rules.",
+                createdAt));
+            state.AddFinalGameScaffold(new FinalGameScaffoldState(
+                new WorldEntityId("scaffold_health_death"),
+                FinalGameScaffoldKind.HealthDeath,
+                "Health and Death",
+                "Reserves save space for health state, illness, injury, aging, death records, and memorialization.",
+                "Data-only placeholder. Current citizens remain unaffected; no mortality, damage, or medical systems are active.",
+                createdAt));
+            state.AddFinalGameScaffold(new FinalGameScaffoldState(
+                new WorldEntityId("scaffold_government_laws"),
+                FinalGameScaffoldKind.GovernmentLaws,
+                "Government and Laws",
+                "Reserves a future layer for jurisdictions, offices, ordinances, taxes, permits, and civic authority.",
+                "Keep laws descriptive until gameplay rules exist. Existing public records and property systems stay authoritative for the current slice.",
+                createdAt));
+            state.AddFinalGameScaffold(new FinalGameScaffoldState(
+                new WorldEntityId("scaffold_crime_justice"),
+                FinalGameScaffoldKind.CrimeJustice,
+                "Crime and Justice Expansion",
+                "Extends civic reports toward future allegations, investigations, penalties, appeals, and rehabilitation.",
+                "Command-light placeholder. Current civic report reputation changes remain the only active justice behavior.",
+                createdAt));
+            state.AddFinalGameScaffold(new FinalGameScaffoldState(
+                new WorldEntityId("scaffold_frontier_settlement"),
+                FinalGameScaffoldKind.FrontierSettlement,
+                "Frontier and Settlement",
+                "Reserves progression from territory claims into camps, villages, infrastructure, and jurisdictions.",
+                "Build on TerritoryChunkState when ready. Do not add automated settlement simulation to the cafe slice.",
+                createdAt));
+            state.AddFinalGameScaffold(new FinalGameScaffoldState(
+                new WorldEntityId("scaffold_culture_artifacts"),
+                FinalGameScaffoldKind.CultureArtifacts,
+                "Culture and Artifacts",
+                "Reserves future records for books, art, heirlooms, local traditions, public works, and cultural memory.",
+                "Data-only placeholder. Artifacts should start as inventory/history records before gaining bespoke gameplay.",
+                createdAt));
+            state.AddFinalGameScaffold(new FinalGameScaffoldState(
+                new WorldEntityId("scaffold_moderation"),
+                FinalGameScaffoldKind.Moderation,
+                "Moderation",
+                "Reserves hooks for player reports, content review state, safety labels, and enforcement audit trails.",
+                "Save-aware placeholder only. No network moderation workflow, policy engine, or player-facing reporting UI is active.",
+                createdAt));
         }
     }
 }

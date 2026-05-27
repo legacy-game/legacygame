@@ -184,16 +184,18 @@ namespace Legacy.Tests.EditMode
             runtime.Execute(new AdvanceTimeCommand(100));
 
             Assert.That(runtime.State.TryGetNextQueuedTask(workplaceId, WorldActionKind.ServeCustomer, out JobTaskState task), Is.True);
+            TakeQueuedCafeOrder(runtime, task.Id, workerId);
             runtime.Execute(new StartJobTaskCommand(task.Id, shiftId, workerId));
             runtime.Execute(new SubmitMiniGameResultCommand(task.Id, workerId, 90, 100, 30, 0));
             WorldCommandResult result = runtime.Execute(new CompleteJobTaskCommand(task.Id, workerId));
 
             Assert.That(result.Succeeded, Is.True);
             Assert.That(runtime.State.TryGetVisitForTask(task.Id, out VisitState visit), Is.True);
-            Assert.That(visit.Status, Is.EqualTo(VisitStatus.Served));
+            Assert.That(visit.Status, Is.EqualTo(VisitStatus.WaitingForTask));
+            Assert.That(visit.CafeStage, Is.EqualTo(CafeVisitStage.Receive));
             Assert.That(runtime.State.Morning.TasksCompleted, Is.EqualTo(1));
             Assert.That(runtime.State.Morning.MoneyEarnedCents, Is.EqualTo(125));
-            Assert.That(runtime.State.GetHistoryByKind(HistoryEventKind.VisitCompleted).Count, Is.EqualTo(1));
+            Assert.That(runtime.State.GetHistoryByKind(HistoryEventKind.VisitCompleted).Count, Is.EqualTo(0));
         }
 
         [Test]
@@ -212,6 +214,7 @@ namespace Legacy.Tests.EditMode
             runtime.Execute(new StartShiftCommand(shiftId, contractId, 120));
             runtime.Execute(new AdvanceTimeCommand(100));
             runtime.State.TryGetNextQueuedTask(workplaceId, WorldActionKind.ServeCustomer, out JobTaskState task);
+            TakeQueuedCafeOrder(runtime, task.Id, workerId);
 
             WorldCommandResult result = runtime.Execute(new StartJobTaskCommand(task.Id, shiftId, workerId));
 
@@ -350,6 +353,7 @@ namespace Legacy.Tests.EditMode
             runtime.Execute(new StartShiftCommand(shiftId, contractId, 120));
             runtime.Execute(new AdvanceTimeCommand(100));
             runtime.State.TryGetNextQueuedTask(workplaceId, WorldActionKind.ServeCustomer, out JobTaskState task);
+            TakeQueuedCafeOrder(runtime, task.Id, workerId);
             runtime.Execute(new StartJobTaskCommand(task.Id, shiftId, workerId));
             runtime.Execute(new SubmitMiniGameResultCommand(task.Id, workerId, 80, 100, 40, 1));
             runtime.Execute(new CompleteJobTaskCommand(task.Id, workerId));
@@ -364,6 +368,12 @@ namespace Legacy.Tests.EditMode
             Assert.That(loaded.Morning.TasksCompleted, Is.EqualTo(1));
             Assert.That(loaded.VisitsById.Count, Is.GreaterThanOrEqualTo(1));
             Assert.That(loaded.GetHistoryByKind(HistoryEventKind.MorningCompleted).Count, Is.EqualTo(1));
+        }
+
+        private static void TakeQueuedCafeOrder(WorldRuntime runtime, WorldEntityId taskId, WorldEntityId workerId)
+        {
+            Assert.That(runtime.State.TryGetVisitForTask(taskId, out VisitState visit), Is.True);
+            Assert.That(runtime.Execute(new TakeCafeOrderCommand(visit.Id, workerId, CafeRecipeCatalog.HouseCoffee)).Succeeded, Is.True);
         }
     }
 }

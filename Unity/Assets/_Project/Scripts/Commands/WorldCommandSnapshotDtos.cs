@@ -66,6 +66,20 @@ namespace Legacy.Commands
     }
 
     [Serializable]
+    public sealed class VisitSnapshotDto
+    {
+        public string id;
+        public string visitorCitizenId;
+        public string workplaceId;
+        public string linkedTaskId;
+        public string status;
+        public string cafeStage;
+        public string recipeId;
+        public int priceCents;
+        public int prepQuality;
+    }
+
+    [Serializable]
     public sealed class MoneyAccountSnapshotDto
     {
         public string id;
@@ -86,6 +100,7 @@ namespace Legacy.Commands
         public List<CitizenSnapshotDto> citizens = new();
         public List<WorkplaceSnapshotDto> workplaces = new();
         public List<JobTaskSnapshotDto> jobTasks = new();
+        public List<VisitSnapshotDto> visits = new();
         public List<MoneyAccountSnapshotDto> moneyAccounts = new();
     }
 
@@ -190,6 +205,23 @@ namespace Legacy.Commands
                     targetEntityId = task.TargetEntityId.Value,
                     status = task.Status.ToString(),
                     quality = task.Quality
+                });
+            }
+
+            var visits = new List<VisitState>(state.VisitsById.Values);
+            visits.Sort((left, right) => string.CompareOrdinal(left.Id.Value, right.Id.Value));
+            for (int i = 0; i < visits.Count; i++) {
+                VisitState visit = visits[i];
+                data.visits.Add(new VisitSnapshotDto {
+                    id = visit.Id.Value,
+                    visitorCitizenId = visit.VisitorCitizenId.Value,
+                    workplaceId = visit.WorkplaceId.Value,
+                    linkedTaskId = visit.LinkedTaskId.Value,
+                    status = visit.Status.ToString(),
+                    cafeStage = visit.CafeStage.ToString(),
+                    recipeId = visit.RecipeId,
+                    priceCents = visit.PriceCents,
+                    prepQuality = visit.PrepQuality
                 });
             }
 

@@ -21,6 +21,9 @@ namespace Legacy.UnityBridge
         private WorldEntityId _activeMiniGameActorId;
         private WorldEntityId _activeMiniGamePlaceId;
         private WorldEntityId _activeTaskId;
+        private Vector2 _panelScroll;
+        private string _lastDialogueLine = "No conversation yet.";
+        private string _lastPublicRecord = "No public record queried yet.";
         private bool _isSavingOrLoading;
 
         private enum PanelMode
@@ -29,6 +32,9 @@ namespace Legacy.UnityBridge
             Jobs,
             History,
             Property,
+            Inventory,
+            Dialogue,
+            Civic,
             MiniGame
         }
 
@@ -64,7 +70,9 @@ namespace Legacy.UnityBridge
             GUILayout.Space(4);
             GUILayout.Label($"Message: {_message}");
             GUILayout.Space(8);
+            _panelScroll = GUILayout.BeginScrollView(_panelScroll, GUILayout.Height(430));
             DrawCurrentPanel();
+            GUILayout.EndScrollView();
             GUILayout.Space(8);
             GUILayout.Label("World: WASD move, E interact with doors/counters/NPCs/buildings | UI: jobs, history, save/load, wait");
             GUILayout.EndArea();
@@ -87,6 +95,21 @@ namespace Legacy.UnityBridge
 
             if (GUILayout.Button("Property")) {
                 _mode = PanelMode.Property;
+            }
+
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Inventory")) {
+                _mode = PanelMode.Inventory;
+            }
+
+            if (GUILayout.Button("Dialogue")) {
+                _mode = PanelMode.Dialogue;
+            }
+
+            if (GUILayout.Button("Civic")) {
+                _mode = PanelMode.Civic;
             }
 
             GUILayout.EndHorizontal();
@@ -122,6 +145,15 @@ namespace Legacy.UnityBridge
                     break;
                 case PanelMode.Property:
                     DrawPropertyPanel();
+                    break;
+                case PanelMode.Inventory:
+                    DrawInventoryPanel();
+                    break;
+                case PanelMode.Dialogue:
+                    DrawDialoguePanel();
+                    break;
+                case PanelMode.Civic:
+                    DrawCivicPanel();
                     break;
                 case PanelMode.MiniGame:
                     DrawMiniGamePanel();
@@ -490,6 +522,218 @@ namespace Legacy.UnityBridge
             GUILayout.Label($"- {building.DisplayName}: owned by {ownerName}");
         }
 
+        private void DrawInventoryPanel()
+        {
+            if (WorldBootstrap.Runtime == null) {
+                return;
+            }
+
+            WorldState state = WorldBootstrap.Runtime.State;
+            GUILayout.Label("Inventory / Containers:");
+            DrawInventoryContainerByOwner(state, CafeWorkplaceId, InventoryContainerKind.WorkplaceStorage, "Cafe storage");
+            DrawInventoryContainerByOwner(state, PharmacyWorkplaceId, InventoryContainerKind.WorkplaceStorage, "Pharmacy storage");
+            DrawInventorySummary();
+
+            GUILayout.Space(8);
+            GUILayout.Label("Wallets / Tills:");
+            DrawCashDrawerByOwner(state, PlayerId, CashContainerKind.Wallet, "Player wallet");
+            DrawCashDrawerByOwner(state, CafeWorkplaceId, CashContainerKind.Till, "Cafe till");
+            DrawCashDrawerByOwner(state, PharmacyWorkplaceId, CashContainerKind.Till, "Pharmacy till");
+            foreach (CashDrawerState drawer in state.CashDrawersById.Values) {
+                DrawCashDrawer(drawer);
+            }
+
+            GUILayout.Space(8);
+            DrawRecentTransactions();
+        }
+
+        private void DrawInventoryContainerByOwner(
+            WorldState state,
+            WorldEntityId ownerId,
+            InventoryContainerKind kind,
+            string missingLabel)
+        {
+            if (!state.TryGetInventoryContainerForOwner(ownerId, kind, out InventoryContainerState container)) {
+                GUILayout.Label($"- {missingLabel}: no container yet");
+                return;
+            }
+
+            DrawInventoryContainer(container);
+        }
+
+        private void DrawInventoryContainer(InventoryContainerState container)
+        {
+            GUILayout.BeginVertical(GUI.skin.box);
+            GUILayout.Label($"{container.DisplayName} ({container.Kind})");
+            if (container.Stacks.Count == 0) {
+                GUILayout.Label("- empty");
+            }
+
+            foreach (InventoryStackState stack in container.Stacks) {
+                string itemName = ItemCatalog.TryGet(stack.ItemId, out ItemDefinition item)
+                    ? item.DisplayName
+                    : stack.ItemId;
+                string value = item == null || item.BaseValueCents <= 0
+                    ? string.Empty
+                    : $" | {EconomySystem.FormatMoney(item.BaseValueCents)} each";
+                GUILayout.Label($"- {itemName} x{stack.Count}{value}");
+            }
+
+            GUILayout.EndVertical();
+        }
+
+        private void DrawCashDrawerByOwner(WorldState state, WorldEntityId ownerId, CashContainerKind kind, string missingLabel)
+        {
+            if (!state.TryGetCashDrawerForOwner(ownerId, kind, out CashDrawerState drawer)) {
+                GUILayout.Label($"- {missingLabel}: no cash drawer yet");
+                return;
+            }
+
+            DrawCashDrawer(drawer);
+        }
+
+        private void DrawCashDrawer(CashDrawerState drawer)
+        {
+            GUILayout.BeginVertical(GUI.skin.box);
+            GUILayout.Label($"{drawer.DisplayName} ({drawer.Kind}) - {EconomySystem.FormatMoney(drawer.TotalCents)}");
+            if (drawer.Stacks.Count == 0) {
+                GUILayout.Label("- empty");
+            }
+
+            foreach (CashDenominationStackState stack in drawer.Stacks) {
+                GUILayout.Label($"- {FormatDenomination(stack.Denomination)} x{stack.Count} = {EconomySystem.FormatMoney(stack.TotalCents)}");
+            }
+
+            GUILayout.EndVertical();
+        }
+
+        private void DrawDialoguePanel()
+        {
+            if (WorldBootstrap.Runtime == null) {
+                return;
+            }
+
+            WorldState state = WorldBootstrap.Runtime.State;
+            GUILayout.Label("Dialogue:");
+            GUILayout.Label(_lastDialogueLine);
+            GUILayout.Space(6);
+            GUILayout.Label("People in this scene:");
+            int shown = 0;
+            foreach (CitizenState citizen in state.CitizensById.Values) {
+                if (citizen.Id == PlayerId || citizen.CurrentSceneId != state.CurrentSceneId) {
+                    continue;
+                }
+
+                DrawDialogueCandidate(state, citizen);
+                shown++;
+            }
+
+            if (shown == 0) {
+                GUILayout.Label("- no one else is here right now");
+            }
+
+            GUILayout.Space(8);
+            GUILayout.Label("Known citizens:");
+            DrawDialogueShortcut(state, new WorldEntityId("citizen_rowan"));
+            DrawDialogueShortcut(state, new WorldEntityId("citizen_old_mr_pell"));
+            DrawDialogueShortcut(state, new WorldEntityId("citizen_mr_holland"));
+            DrawDialogueShortcut(state, new WorldEntityId("citizen_sasha"));
+        }
+
+        private void DrawDialogueShortcut(WorldState state, WorldEntityId citizenId)
+        {
+            if (state.TryGetCitizen(citizenId, out CitizenState citizen)) {
+                DrawDialogueCandidate(state, citizen);
+            }
+        }
+
+        private void DrawDialogueCandidate(WorldState state, CitizenState citizen)
+        {
+            GUILayout.BeginVertical(GUI.skin.box);
+            GUILayout.Label($"{citizen.DisplayName} - {citizen.Activity} at {GetPlaceName(state, citizen.CurrentPlaceId)}");
+            if (TryGetOpenVisitForCitizen(state, citizen.Id, out VisitState visit)) {
+                GUILayout.Label($"Visit: {visit.Status} / {visit.Intent}");
+                if (!string.IsNullOrWhiteSpace(visit.ArrivalLine)) {
+                    GUILayout.Label($"Arrival: \"{visit.ArrivalLine}\"");
+                }
+
+                if (!string.IsNullOrWhiteSpace(visit.CompletionLine)) {
+                    GUILayout.Label($"After service: \"{visit.CompletionLine}\"");
+                }
+            }
+
+            if (state.DialogueStatesByCitizenId.TryGetValue(citizen.Id, out DialogueState dialogue)) {
+                string lastLine = DialogueCatalog.TryGet(dialogue.LastLineId, out DialogueLine line)
+                    ? line.Text
+                    : dialogue.LastLineId;
+                GUILayout.Label($"Talked {dialogue.ConversationCount} time(s). Last: {lastLine}");
+            }
+
+            if (TryGetRelationship(state, citizen.Id, PlayerId, out RelationshipState relationship)) {
+                GUILayout.Label($"Relationship: affinity {relationship.Affinity}, familiarity {relationship.Familiarity}");
+            }
+
+            if (GUILayout.Button($"Talk to {citizen.DisplayName}")) {
+                WorldCommandResult result = ExecuteAndShow(new TalkToCitizenCommand(PlayerId, citizen.Id, GetDialogueTopic(citizen.Id)));
+                _lastDialogueLine = result.Message;
+            }
+
+            GUILayout.EndVertical();
+        }
+
+        private void DrawCivicPanel()
+        {
+            if (WorldBootstrap.Runtime == null) {
+                return;
+            }
+
+            WorldState state = WorldBootstrap.Runtime.State;
+            GUILayout.Label("Public Records:");
+            GUILayout.BeginHorizontal();
+            DrawPublicRecordButton("Noaharan", PlayerId);
+            DrawPublicRecordButton("Rowan", new WorldEntityId("citizen_rowan"));
+            DrawPublicRecordButton("Pell", new WorldEntityId("citizen_old_mr_pell"));
+            DrawPublicRecordButton("Holland", new WorldEntityId("citizen_mr_holland"));
+            DrawPublicRecordButton("Sasha", new WorldEntityId("citizen_sasha"));
+            GUILayout.EndHorizontal();
+            GUILayout.TextArea(_lastPublicRecord, GUILayout.Height(140));
+
+            GUILayout.Space(8);
+            GUILayout.Label("Known record summaries:");
+            foreach (PublicRecordState record in state.PublicRecordsByCitizenId.Values) {
+                string citizenName = state.TryGetCitizen(record.CitizenId, out CitizenState citizen)
+                    ? citizen.DisplayName
+                    : record.CitizenId.ToString();
+                GUILayout.Label($"- {citizenName}: reputation {record.ReputationScore}, filed {record.ReportsFiled}, received {record.ReportsReceived}");
+            }
+
+            GUILayout.Space(6);
+            GUILayout.Label("Recent civic registry:");
+            int start = Mathf.Max(0, state.CivicRegistryEntries.Count - 5);
+            if (state.CivicRegistryEntries.Count == 0) {
+                GUILayout.Label("- none yet");
+            }
+
+            for (int i = start; i < state.CivicRegistryEntries.Count; i++) {
+                CivicRegistryEntryState entry = state.CivicRegistryEntries[i];
+                string citizenName = state.TryGetCitizen(entry.CitizenId, out CitizenState citizen)
+                    ? citizen.DisplayName
+                    : entry.CitizenId.ToString();
+                GUILayout.Label($"- {entry.Kind}: {citizenName} - {entry.Summary}");
+            }
+
+            GUILayout.Space(6);
+            DrawRecentHistory(5);
+        }
+
+        private void DrawPublicRecordButton(string label, WorldEntityId citizenId)
+        {
+            if (GUILayout.Button(label)) {
+                WorldCommandResult result = ExecuteAndShow(new QueryPublicRecordCommand(citizenId, PlayerId, 5, 5));
+                _lastPublicRecord = result.Message;
+            }
+        }
+
         private void DrawMiniGamePanel()
         {
             if (WorldBootstrap.Runtime == null) {
@@ -683,6 +927,83 @@ namespace Legacy.UnityBridge
             return state.TryGetPlace(workplace.PlaceId, out PlaceState place)
                 ? place.DisplayName
                 : workplace.Id.ToString();
+        }
+
+        private static string GetPlaceName(WorldState state, WorldEntityId placeId)
+        {
+            return state.TryGetPlace(placeId, out PlaceState place)
+                ? place.DisplayName
+                : placeId.ToString();
+        }
+
+        private static bool TryGetOpenVisitForCitizen(WorldState state, WorldEntityId citizenId, out VisitState visit)
+        {
+            foreach (VisitState candidate in state.VisitsById.Values) {
+                if (candidate.VisitorCitizenId != citizenId) {
+                    continue;
+                }
+
+                if (candidate.Status == VisitStatus.Served ||
+                    candidate.Status == VisitStatus.Left ||
+                    candidate.Status == VisitStatus.Failed) {
+                    continue;
+                }
+
+                visit = candidate;
+                return true;
+            }
+
+            visit = null;
+            return false;
+        }
+
+        private static bool TryGetRelationship(
+            WorldState state,
+            WorldEntityId ownerCitizenId,
+            WorldEntityId otherCitizenId,
+            out RelationshipState relationship)
+        {
+            foreach (RelationshipState candidate in state.Relationships) {
+                if (candidate.OwnerCitizenId == ownerCitizenId && candidate.OtherCitizenId == otherCitizenId) {
+                    relationship = candidate;
+                    return true;
+                }
+            }
+
+            relationship = null;
+            return false;
+        }
+
+        private static string GetDialogueTopic(WorldEntityId citizenId)
+        {
+            return citizenId == new WorldEntityId("citizen_rowan") ||
+                citizenId == new WorldEntityId("citizen_old_mr_pell")
+                ? "morning"
+                : "greeting";
+        }
+
+        private static string FormatDenomination(CashDenomination denomination)
+        {
+            switch (denomination) {
+                case CashDenomination.Penny:
+                    return "Penny";
+                case CashDenomination.Nickel:
+                    return "Nickel";
+                case CashDenomination.Dime:
+                    return "Dime";
+                case CashDenomination.Quarter:
+                    return "Quarter";
+                case CashDenomination.OneDollar:
+                    return "$1";
+                case CashDenomination.FiveDollar:
+                    return "$5";
+                case CashDenomination.TenDollar:
+                    return "$10";
+                case CashDenomination.TwentyDollar:
+                    return "$20";
+                default:
+                    return denomination.ToString();
+            }
         }
 
         private static string BuildTaskSummary(JobTaskState task)

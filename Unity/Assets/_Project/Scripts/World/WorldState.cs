@@ -38,6 +38,7 @@ namespace Legacy.World
         private readonly Dictionary<WorldEntityId, LeaseContractState> _leaseContractsById = new();
         private readonly Dictionary<WorldEntityId, TenantRecordState> _tenantRecordsById = new();
         private readonly List<BusinessLedgerEntryState> _businessLedgerEntries = new();
+        private readonly List<FinalGameScaffoldState> _finalGameScaffolds = new();
         private readonly HistoryStore _history;
         private long _nextTransactionNumber = 1;
         private long _nextCitizenMemoryNumber = 1;
@@ -83,6 +84,7 @@ namespace Legacy.World
         public IReadOnlyDictionary<WorldEntityId, LeaseContractState> LeaseContractsById => _leaseContractsById;
         public IReadOnlyDictionary<WorldEntityId, TenantRecordState> TenantRecordsById => _tenantRecordsById;
         public IReadOnlyList<BusinessLedgerEntryState> BusinessLedgerEntries => _businessLedgerEntries;
+        public IReadOnlyList<FinalGameScaffoldState> FinalGameScaffolds => _finalGameScaffolds;
         public IReadOnlyList<HistoryEvent> RecentHistory => _history.RecentHistory;
         public IHistoryArchive HistoryArchive => _history.Archive;
         public MorningState Morning => _morning;
@@ -293,6 +295,11 @@ namespace Legacy.World
         {
             _businessLedgerEntries.Add(entry);
             IncludeBusinessLedgerEntryId(entry.Id);
+        }
+
+        public void AddFinalGameScaffold(FinalGameScaffoldState scaffold)
+        {
+            _finalGameScaffolds.Add(scaffold);
         }
 
         public WorldEntityId CreateNextTransactionId()

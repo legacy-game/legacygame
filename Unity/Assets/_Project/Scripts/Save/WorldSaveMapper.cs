@@ -174,6 +174,10 @@ namespace Legacy.Save
                 data.businessLedgerEntries.Add(ToSaveData(entry));
             }
 
+            foreach (FinalGameScaffoldState scaffold in state.FinalGameScaffolds) {
+                data.finalGameScaffolds.Add(ToSaveData(scaffold));
+            }
+
             foreach (PlotState plot in state.PlotsById.Values) {
                 data.plots.Add(new PlotSaveData {
                     id = plot.Id.Value,
@@ -432,6 +436,12 @@ namespace Legacy.Save
             if (data.businessLedgerEntries != null) {
                 foreach (BusinessLedgerEntrySaveData entry in data.businessLedgerEntries) {
                     state.AddBusinessLedgerEntry(ToRuntime(entry));
+                }
+            }
+
+            if (data.finalGameScaffolds != null) {
+                foreach (FinalGameScaffoldSaveData scaffold in data.finalGameScaffolds) {
+                    state.AddFinalGameScaffold(ToRuntime(scaffold));
                 }
             }
 
@@ -893,6 +903,12 @@ namespace Legacy.Save
                 requestedTaskDefinitionId = visit.RequestedTaskDefinitionId,
                 linkedTaskId = visit.LinkedTaskId.Value,
                 status = visit.Status.ToString(),
+                cafeStage = visit.CafeStage.ToString(),
+                recipeId = visit.RecipeId,
+                preparedItemId = visit.PreparedItemId,
+                priceCents = visit.PriceCents,
+                prepQuality = visit.PrepQuality,
+                tenderedCents = visit.TenderedCents,
                 arrivalTime = ToSaveData(visit.ArrivalTime),
                 departureTime = ToSaveData(visit.DepartureTime),
                 arrivalLine = visit.ArrivalLine,
@@ -914,7 +930,13 @@ namespace Legacy.Save
                 ToRuntime(visit.arrivalTime),
                 ToRuntime(visit.departureTime),
                 visit.arrivalLine,
-                visit.completionLine);
+                visit.completionLine,
+                string.IsNullOrWhiteSpace(visit.cafeStage) ? CafeVisitStage.Enter : Enum.Parse<CafeVisitStage>(visit.cafeStage),
+                visit.recipeId,
+                visit.preparedItemId,
+                visit.priceCents,
+                visit.prepQuality,
+                visit.tenderedCents);
         }
 
         private static WorkplaceInventorySaveData ToSaveData(WorkplaceInventoryState inventory)
@@ -1292,6 +1314,31 @@ namespace Legacy.Save
                 entry.reason,
                 ToRuntime(entry.timestamp),
                 OptionalId(entry.relatedEntityId));
+        }
+
+        private static FinalGameScaffoldSaveData ToSaveData(FinalGameScaffoldState scaffold)
+        {
+            return new FinalGameScaffoldSaveData {
+                id = scaffold.Id.Value,
+                kind = scaffold.Kind.ToString(),
+                displayName = scaffold.DisplayName,
+                summary = scaffold.Summary,
+                implementationNotes = scaffold.ImplementationNotes,
+                createdAt = ToSaveData(scaffold.CreatedAt),
+                isGameplayEnabled = scaffold.IsGameplayEnabled
+            };
+        }
+
+        private static FinalGameScaffoldState ToRuntime(FinalGameScaffoldSaveData scaffold)
+        {
+            return new FinalGameScaffoldState(
+                Id(scaffold.id),
+                Enum.Parse<FinalGameScaffoldKind>(scaffold.kind),
+                scaffold.displayName,
+                scaffold.summary,
+                scaffold.implementationNotes,
+                ToRuntime(scaffold.createdAt),
+                scaffold.isGameplayEnabled);
         }
 
         private static TerritoryChunkState ToRuntime(TerritoryChunkSaveData territory)

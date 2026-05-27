@@ -35,6 +35,7 @@ namespace Legacy.History
         MiniGameResultSubmitted,
         JobTaskCompleted,
         DeliveryReceived,
+        CafeOrderTaken,
         CafeSaleCompleted,
         CashChangeMade,
         PerformanceRecorded,

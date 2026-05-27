@@ -43,6 +43,7 @@ namespace Legacy.Save
         public List<LeaseContractSaveData> leaseContracts = new();
         public List<TenantRecordSaveData> tenantRecords = new();
         public List<BusinessLedgerEntrySaveData> businessLedgerEntries = new();
+        public List<FinalGameScaffoldSaveData> finalGameScaffolds = new();
         public List<PlotSaveData> plots = new();
         public List<BuildingSaveData> buildings = new();
         public List<HistoryEventSaveData> recentHistory = new();

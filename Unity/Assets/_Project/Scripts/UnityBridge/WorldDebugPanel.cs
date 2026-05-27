@@ -42,6 +42,7 @@ namespace Legacy.UnityBridge
             _builder.AppendLine($"World actions: {state.GetHistoryByKind(HistoryEventKind.WorldActionPerformed).Count}");
             AppendCitizenLocation(state, new WorldEntityId("citizen_old_mr_pell"));
             AppendCitizenGoals(state);
+            AppendCafeVisits(state);
             AppendTerritory(state);
             _builder.AppendLine("Recent history:");
 
@@ -86,6 +87,29 @@ namespace Legacy.UnityBridge
                     : goal.TargetPlaceId.ToString();
 
                 _builder.AppendLine($"- {goal.Status}: {citizenName} -> {targetName} ({goal.Reason})");
+            }
+        }
+
+        private void AppendCafeVisits(WorldState state)
+        {
+            int visibleCount = 0;
+            foreach (VisitState visit in state.VisitsById.Values) {
+                if (!visit.IsCafeVisit) {
+                    continue;
+                }
+
+                if (visibleCount == 0) {
+                    _builder.AppendLine("Cafe visits:");
+                }
+
+                string visitorName = state.TryGetCitizen(visit.VisitorCitizenId, out CitizenState visitor)
+                    ? visitor.DisplayName
+                    : visit.VisitorCitizenId.ToString();
+                _builder.AppendLine($"- {visitorName}: {visit.CafeStage} / {visit.Status} / {visit.RecipeId}");
+                visibleCount++;
+                if (visibleCount >= 4) {
+                    break;
+                }
             }
         }
 

@@ -12,6 +12,10 @@ namespace Legacy.Commands
         StartJobTask,
         SubmitMiniGameResult,
         CompleteJobTask,
+        TakeCafeOrder,
+        PayCafeVisit,
+        ChatWithCafeCustomer,
+        LeaveCafeVisit,
         EndShift,
         SwitchScene
     }
@@ -189,6 +193,48 @@ namespace Legacy.Commands
                     command = new CompleteJobTaskCommand(completeTaskId, arguments.GetOptionalId("workerCitizenId", actorId));
                     return true;
 
+                case SerializedWorldCommandKind.TakeCafeOrder:
+                    if (!arguments.TryGetId("visitId", out WorldEntityId orderVisitId, out validation) ||
+                        !arguments.TryGetString("recipeId", out string recipeId, out validation)) {
+                        return false;
+                    }
+
+                    command = new TakeCafeOrderCommand(orderVisitId, arguments.GetOptionalId("workerCitizenId", actorId), recipeId);
+                    return true;
+
+                case SerializedWorldCommandKind.PayCafeVisit:
+                    if (!arguments.TryGetId("visitId", out WorldEntityId payVisitId, out validation) ||
+                        !arguments.TryGetEnum("tenderDenomination", out CashDenomination tenderDenomination, out validation) ||
+                        !arguments.TryGetPositiveInt("tenderCount", out int tenderCount, out validation)) {
+                        return false;
+                    }
+
+                    command = new PayCafeVisitCommand(
+                        payVisitId,
+                        arguments.GetOptionalId("workerCitizenId", actorId),
+                        new[] { new CashDenominationStackState(tenderDenomination, tenderCount) });
+                    return true;
+
+                case SerializedWorldCommandKind.ChatWithCafeCustomer:
+                    if (!arguments.TryGetId("visitId", out WorldEntityId chatVisitId, out validation)) {
+                        return false;
+                    }
+
+                    command = new ChatWithCafeCustomerCommand(
+                        chatVisitId,
+                        arguments.GetOptionalId("workerCitizenId", actorId),
+                        arguments.GetOptionalString("topic"),
+                        arguments.GetOptionalString("lineId"));
+                    return true;
+
+                case SerializedWorldCommandKind.LeaveCafeVisit:
+                    if (!arguments.TryGetId("visitId", out WorldEntityId leaveVisitId, out validation)) {
+                        return false;
+                    }
+
+                    command = new LeaveCafeVisitCommand(leaveVisitId, arguments.GetOptionalId("workerCitizenId", actorId));
+                    return true;
+
                 case SerializedWorldCommandKind.EndShift:
                     if (!arguments.TryGetId("shiftId", out WorldEntityId endShiftId, out validation)) {
                         return false;
@@ -309,7 +355,7 @@ namespace Legacy.Commands
                 return true;
             }
 
-            private bool TryGetString(string key, out string value, out WorldCommandValidationResult validation)
+            public bool TryGetString(string key, out string value, out WorldCommandValidationResult validation)
             {
                 if (!TryFind(key, out value) || string.IsNullOrWhiteSpace(value)) {
                     validation = WorldCommandValidationResult.Invalid($"Command argument {key} is required.");
@@ -318,6 +364,11 @@ namespace Legacy.Commands
 
                 validation = WorldCommandValidationResult.Valid();
                 return true;
+            }
+
+            public string GetOptionalString(string key)
+            {
+                return TryFind(key, out string raw) ? raw ?? string.Empty : string.Empty;
             }
 
             private bool TryFind(string key, out string value)

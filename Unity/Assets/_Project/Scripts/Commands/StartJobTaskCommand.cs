@@ -44,13 +44,33 @@ namespace Legacy.Commands
                 return WorldCommandResult.Failure("Worker is not contracted for this task.");
             }
 
+            VisitState cafeVisit = null;
+            if (definition.Id == JobTaskCatalog.ServeCafeCustomer &&
+                context.State.TryGetVisitForTask(task.Id, out VisitState linkedVisit) &&
+                linkedVisit.IsCafeVisit) {
+                if (linkedVisit.CafeStage != CafeVisitStage.Order) {
+                    return WorldCommandResult.Failure($"Cafe order must be taken before prep; current stage is {linkedVisit.CafeStage}.");
+                }
+
+                linkedVisit.AwaitCafePrep();
+                cafeVisit = linkedVisit;
+            }
+
             task.Start(_workerCitizenId, shift.Id, context.State.CurrentTime);
             if (context.State.TryGetWorkplace(task.WorkplaceId, out WorkplaceState workplace)) {
                 workplace.RemoveTask(task.Id);
             }
 
             HistoryEvent history = context.History.Create(context.State.CurrentTime, HistoryEventKind.JobTaskStarted, $"Job task started: {definition.DisplayName}.", new[] { _workerCitizenId }, new[] { task.WorkplaceId });
-            return WorldCommandResult.Success($"Started task: {definition.DisplayName}.").WithChangedEntity(task.Id).WithChangedEntity(task.WorkplaceId).WithHistoryEvent(history);
+            WorldCommandResult result = WorldCommandResult.Success($"Started task: {definition.DisplayName}.")
+                .WithChangedEntity(task.Id)
+                .WithChangedEntity(task.WorkplaceId)
+                .WithHistoryEvent(history);
+            if (cafeVisit != null) {
+                result.WithChangedEntity(cafeVisit.Id);
+            }
+
+            return result;
         }
     }
 }

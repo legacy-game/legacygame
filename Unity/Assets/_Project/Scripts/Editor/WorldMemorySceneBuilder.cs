@@ -98,6 +98,9 @@ namespace Legacy.Editor
             var bootstrap = new GameObject("WorldBootstrap");
             bootstrap.AddComponent<WorldBootstrap>();
 
+            var audioObject = new GameObject("AudioManager");
+            audioObject.AddComponent<AudioManager>();
+
             var sceneBridgeObject = new GameObject("WorldSceneBridge");
             WorldSceneBridge sceneBridge = sceneBridgeObject.AddComponent<WorldSceneBridge>();
             sceneBridge.SetSceneId(sceneId);

@@ -2,7 +2,8 @@
     "name": "Legacy.Tests.EditMode",
     "rootNamespace": "Legacy.Tests.EditMode",
     "references": [
-        "Legacy.Runtime"
+        "Legacy.Runtime",
+        "Legacy.Editor"
     ],
     "includePlatforms": [
         "Editor"

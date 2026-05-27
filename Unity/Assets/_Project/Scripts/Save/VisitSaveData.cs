@@ -13,6 +13,12 @@ namespace Legacy.Save
         public string requestedTaskDefinitionId;
         public string linkedTaskId;
         public string status;
+        public string cafeStage;
+        public string recipeId;
+        public string preparedItemId;
+        public int priceCents;
+        public int prepQuality;
+        public int tenderedCents;
         public DateTimeSaveData arrivalTime;
         public DateTimeSaveData departureTime;
         public string arrivalLine;

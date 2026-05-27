@@ -78,6 +78,73 @@ namespace Legacy.Tests.EditMode
             Assert.That(host.StateRevision, Is.EqualTo(1));
         }
 
+        [Test]
+        public void InMemoryTransport_ConnectsTwoClientsToSameHostSnapshot()
+        {
+            var transport = new InMemoryWorldTransport(WorldFactory.CreateVeyneSeedWorld());
+
+            IWorldTransportClient firstClient = transport.Connect("client_a");
+            IWorldTransportClient secondClient = transport.Connect("client_b");
+
+            Assert.That(transport.Clients.Count, Is.EqualTo(2));
+            Assert.That(firstClient.LastKnownStateRevision, Is.EqualTo(0));
+            Assert.That(secondClient.LastKnownStateRevision, Is.EqualTo(0));
+            Assert.That(firstClient.LastSnapshot.currentTime.hour, Is.EqualTo(secondClient.LastSnapshot.currentTime.hour));
+            Assert.That(firstClient.LastSnapshot.currentTime.minute, Is.EqualTo(secondClient.LastSnapshot.currentTime.minute));
+            Assert.That(firstClient.LastSnapshot.citizens.Count, Is.EqualTo(secondClient.LastSnapshot.citizens.Count));
+        }
+
+        [Test]
+        public void InMemoryTransport_BroadcastsSnapshotsAndEventsToAllClients()
+        {
+            var transport = new InMemoryWorldTransport(WorldFactory.CreateVeyneSeedWorld());
+            IWorldTransportClient firstClient = transport.Connect("client_a");
+            IWorldTransportClient secondClient = transport.Connect("client_b");
+            WorldCommandEnvelopeDto envelope = firstClient.CreateEnvelope(SerializedWorldCommandKind.AdvanceTime);
+            envelope.AddArgument("minutes", "10");
+
+            WorldCommandResultDto result = firstClient.Submit(envelope);
+
+            Assert.That(result.succeeded, Is.True);
+            Assert.That(transport.StateRevision, Is.EqualTo(1));
+            Assert.That(firstClient.LastSnapshot.currentTime.minute, Is.EqualTo(40));
+            Assert.That(secondClient.LastSnapshot.currentTime.minute, Is.EqualTo(40));
+            Assert.That(firstClient.ReceivedResults.Count, Is.EqualTo(1));
+            Assert.That(secondClient.ReceivedResults.Count, Is.EqualTo(1));
+            Assert.That(secondClient.LastResult.commandId, Is.EqualTo(result.commandId));
+            Assert.That(secondClient.ReceivedSnapshots.Count, Is.EqualTo(2));
+            Assert.That(secondClient.ReceivedEvents.Count, Is.GreaterThanOrEqualTo(1));
+        }
+
+        [Test]
+        public void InMemoryTransport_OnlyFirstClientCanCompleteContendedTask()
+        {
+            WorldRuntime setupRuntime = CreateReadyToCompleteTaskRuntime();
+            var host = new LocalAuthoritativeWorldHost(setupRuntime);
+            var transport = new InMemoryWorldTransport(host);
+            IWorldTransportClient firstClient = transport.Connect("client_a");
+            IWorldTransportClient secondClient = transport.Connect("client_b");
+            WorldCommandEnvelopeDto firstComplete = firstClient.CreateEnvelope(SerializedWorldCommandKind.CompleteJobTask, "citizen_noaharan");
+            WorldCommandEnvelopeDto secondComplete = secondClient.CreateEnvelope(SerializedWorldCommandKind.CompleteJobTask, "citizen_noaharan");
+            firstComplete.AddArgument("taskId", "task_noah_cafe_mp");
+            secondComplete.AddArgument("taskId", "task_noah_cafe_mp");
+
+            WorldCommandResultDto firstResult = firstClient.Submit(firstComplete);
+            WorldCommandResultDto secondResult = secondClient.Submit(secondComplete);
+
+            Assert.That(firstResult.succeeded, Is.True);
+            Assert.That(secondResult.succeeded, Is.False);
+            Assert.That(secondResult.message, Does.Contain("stale"));
+            Assert.That(host.State.JobTasksById[new WorldEntityId("task_noah_cafe_mp")].Status, Is.EqualTo(JobTaskStatus.Completed));
+            Assert.That(transport.StateRevision, Is.EqualTo(1));
+            Assert.That(firstClient.LastKnownStateRevision, Is.EqualTo(1));
+            Assert.That(secondClient.LastKnownStateRevision, Is.EqualTo(1));
+            Assert.That(firstClient.ReceivedResults.Count, Is.EqualTo(2));
+            Assert.That(secondClient.ReceivedResults.Count, Is.EqualTo(2));
+            Assert.That(firstClient.ReceivedEvents.Count, Is.GreaterThanOrEqualTo(1));
+            Assert.That(secondClient.ReceivedEvents.Count, Is.GreaterThanOrEqualTo(1));
+        }
+
         private static WorldCommandEnvelopeDto CreateAdvanceTimeEnvelope(string clientId, int expectedRevision, int minutes)
         {
             var envelope = new WorldCommandEnvelopeDto {

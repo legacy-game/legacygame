@@ -40,7 +40,34 @@ namespace Legacy.Commands
                 return WorldCommandResult.Failure($"Task definition not found: {task.DefinitionId}");
             }
 
-            if (!context.State.TryGetWorkplaceInventory(workplace.Id, out WorkplaceInventoryState inventory)) {
+            VisitState visit = null;
+            VisitState linkedVisit = null;
+            bool isCafeVisit = definition.Id == JobTaskCatalog.ServeCafeCustomer &&
+                context.State.TryGetVisitForTask(task.Id, out linkedVisit) &&
+                linkedVisit.IsCafeVisit;
+            CafeRecipeDefinition cafeRecipe = null;
+            InventoryContainerState cafeInventory = null;
+            WorkplaceInventoryState inventory = null;
+
+            if (isCafeVisit) {
+                visit = linkedVisit;
+                if (visit.CafeStage != CafeVisitStage.AwaitPrep) {
+                    return WorldCommandResult.Failure($"Cafe visit must be awaiting prep; current stage is {visit.CafeStage}.");
+                }
+
+                string recipeId = string.IsNullOrWhiteSpace(visit.RecipeId) ? definition.RecipeId : visit.RecipeId;
+                if (!CafeRecipeCatalog.TryGet(recipeId, out cafeRecipe)) {
+                    return WorldCommandResult.Failure($"Cafe recipe not found: {recipeId}");
+                }
+
+                if (!context.State.TryGetInventoryContainerForOwner(workplace.Id, InventoryContainerKind.WorkplaceStorage, out cafeInventory)) {
+                    return WorldCommandResult.Failure("Cafe inventory container not found.");
+                }
+
+                if (!CafeRecipeSystem.CanPrepare(cafeInventory, cafeRecipe, out string recipeReason)) {
+                    return WorldCommandResult.Failure(recipeReason);
+                }
+            } else if (!context.State.TryGetWorkplaceInventory(workplace.Id, out inventory)) {
                 return WorldCommandResult.Failure("Workplace inventory not found.");
             }
 
@@ -57,7 +84,7 @@ namespace Legacy.Commands
                 return WorldCommandResult.Failure("Worker account not found.");
             }
 
-            if (!string.IsNullOrEmpty(definition.InputItemId) && inventory.CountOf(definition.InputItemId) < definition.InputItemCount) {
+            if (!isCafeVisit && !string.IsNullOrEmpty(definition.InputItemId) && inventory.CountOf(definition.InputItemId) < definition.InputItemCount) {
                 return WorldCommandResult.Failure($"Missing inventory: needs {definition.InputItemCount} {definition.InputItemId}.");
             }
 
@@ -67,11 +94,21 @@ namespace Legacy.Commands
                 return WorldCommandResult.Failure(wage.Message);
             }
 
-            if (!string.IsNullOrEmpty(definition.InputItemId)) {
+            if (isCafeVisit) {
+                if (!CafeRecipeSystem.TryPrepare(cafeInventory, cafeRecipe, out string recipeReason)) {
+                    return WorldCommandResult.Failure(recipeReason);
+                }
+
+                if (!string.IsNullOrEmpty(cafeRecipe.OutputItemId) && cafeRecipe.OutputCount > 0) {
+                    cafeInventory.TryRemove(cafeRecipe.OutputItemId, cafeRecipe.OutputCount);
+                }
+
+                visit.ReceiveCafeOrder(task.Quality);
+            } else if (!string.IsNullOrEmpty(definition.InputItemId)) {
                 inventory.TryRemove(definition.InputItemId, definition.InputItemCount);
             }
 
-            if (!string.IsNullOrEmpty(definition.OutputItemId)) {
+            if (!isCafeVisit && !string.IsNullOrEmpty(definition.OutputItemId)) {
                 inventory.Add(definition.OutputItemId, definition.OutputItemCount);
             }
 
@@ -80,8 +117,7 @@ namespace Legacy.Commands
             workplace.RemoveTask(task.Id);
             context.State.Morning?.AddCompletedTask(earnedCents);
 
-            VisitState visit = null;
-            if (context.State.TryGetVisitForTask(task.Id, out VisitState linkedVisit)) {
+            if (!isCafeVisit && context.State.TryGetVisitForTask(task.Id, out linkedVisit)) {
                 linkedVisit.MarkServed(context.State.CurrentTime);
                 visit = linkedVisit;
             }
@@ -94,13 +130,15 @@ namespace Legacy.Commands
             HistoryEvent payment = context.History.Create(context.State.CurrentTime, HistoryEventKind.PaymentRecorded, $"{EconomySystem.FormatMoney(earnedCents)} paid for {definition.DisplayName}.", new[] { _workerCitizenId, workplace.OwnerCitizenId }, new[] { workplace.PlaceId });
             HistoryEvent completed = context.History.Create(context.State.CurrentTime, HistoryEventKind.JobTaskCompleted, $"{definition.DisplayName} completed with quality {task.Quality}.", new[] { _workerCitizenId }, new[] { workplace.PlaceId });
             HistoryEvent skill = context.History.Create(context.State.CurrentTime, HistoryEventKind.SkillImproved, "A worker gained job experience.", new[] { _workerCitizenId }, new[] { workplace.PlaceId });
-            HistoryEvent visitCompleted = visit == null
+            HistoryEvent visitCompleted = visit == null || isCafeVisit
                 ? null
                 : context.History.Create(context.State.CurrentTime, HistoryEventKind.VisitCompleted, $"{visit.CompletionLine}", new[] { visit.VisitorCitizenId, _workerCitizenId }, new[] { workplace.PlaceId });
 
             WorldCommandResult result = WorldCommandResult.Success(visit == null
                     ? $"{definition.DisplayName} complete. Money, inventory, skill, and history updated."
-                    : $"{definition.DisplayName} complete. {visit.CompletionLine}")
+                    : isCafeVisit
+                        ? $"{definition.DisplayName} complete. Order ready for payment."
+                        : $"{definition.DisplayName} complete. {visit.CompletionLine}")
                 .WithChangedEntity(task.Id)
                 .WithChangedEntity(shift.Id)
                 .WithChangedEntity(workplace.Id)
@@ -110,6 +148,8 @@ namespace Legacy.Commands
                 .WithHistoryEvent(skill);
             if (visitCompleted != null) {
                 result.WithChangedEntity(visit.Id).WithHistoryEvent(visitCompleted);
+            } else if (isCafeVisit && visit != null) {
+                result.WithChangedEntity(visit.Id);
             }
 
             return result;
